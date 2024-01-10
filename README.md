@@ -1,2 +1,2 @@
-# lunarjg.github.io
+# galois.kim.github.io
 my homepage
