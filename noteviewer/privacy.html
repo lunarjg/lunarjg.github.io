@@ -24,7 +24,7 @@
   <nav><a href="./">노트 뷰어 홈 / Home</a> · <a href="#ko">한국어</a> · <a href="#en">English</a></nav>
 
   <h1 id="ko">개인정보처리방침</h1>
-  <p class="muted">시행일: 2026년 10월 19일 · 앱: 노트 뷰어 (Note Viewer)</p>
+  <p class="muted">시행일: 2026년 10월 26일 · 앱: 노트 뷰어 (Note Viewer)</p>
 
   <section>
     <h2>1. 요약</h2>
@@ -39,6 +39,8 @@
       <li><b>Google 계정 기본 정보</b>: 연결된 계정의 이메일 주소와 이름. 설정 화면에 어느 계정이 연결됐는지 표시하는 데만 씁니다.</li>
       <li><b>Google 드라이브 파일</b>: 사용자가 고른 노트 폴더 안의 폴더 이름, PDF 파일 이름, 수정 시각, 크기, 파일 내용.
         노트 목록을 만들고 PDF를 화면에 표시하는 데만 씁니다. 드라이브의 파일을 수정하거나 삭제하지 않습니다.</li>
+      <li><b>노트 폴더 찾기와 변경 확인</b>: 노트 폴더를 추천하고 새로 바뀐 노트를 찾기 위해, 드라이브의 다른 위치에 있는 PDF와 폴더의 <b>이름과 위치(상위 폴더), 수정 시각</b>도 읽습니다.
+        이 정보는 기기 안에서만 처리하며, 고른 노트 폴더에 속한 항목만 보관하고 나머지는 저장하지 않습니다. 다른 위치의 파일 내용은 읽지 않습니다.</li>
       <li><b>사용자가 직접 가져온 PDF</b>: 휴대폰에서 고르거나 다른 앱에서 공유한 PDF 파일.</li>
     </ul>
   </section>
@@ -47,9 +49,11 @@
     <h2>3. 저장 위치와 보관 기간</h2>
     <ul>
       <li>오프라인 열람을 위해 PDF 사본, 표지 이미지, 검색용 텍스트, 설정(즐겨찾기, 책갈피, 마지막으로 본 페이지 등)을 <b>앱 내부 저장소에만</b> 보관합니다.</li>
-      <li>보관된 데이터는 사용자가 삭제할 때까지 유지됩니다.
-        <b>설정 → 오프라인 사본 모두 삭제</b>, Google 드라이브 연결 해제, 앱 삭제로 언제든 지울 수 있습니다.</li>
-      <li><b>백그라운드 동기화</b>(Android 앱, 설정에서 끌 수 있음): 앱이 닫혀 있어도 약 15분마다 노트 폴더의 변경 사항을 Google 드라이브에 직접 확인하고, 바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다. 이때도 데이터는 드라이브와 기기 사이에서만 오갑니다.</li>
+      <li>보관된 데이터는 사용자가 삭제할 때까지 유지됩니다. <b>설정 → 오프라인 사본 모두 삭제</b>나 앱 삭제로 언제든 지울 수 있습니다.
+        연결 해제는 드라이브 접근 권한과 백그라운드로 받아 둔 파일을 지우지만, 이미 열어 본 노트의 오프라인 사본은 위 방법으로 지울 때까지 남습니다.</li>
+      <li><b>백그라운드 동기화</b>(Android 앱, <b>기본으로 켜져 있으며</b> 설정에서 끌 수 있음): 앱이 닫혀 있어도 약 15분마다 Google 드라이브의 변경 기록을 확인해 노트 폴더의 새 노트를 찾고,
+        바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다(기본 설정에서는 Wi‑Fi에서만). 이때도 데이터는 드라이브와 기기 사이에서만 오갑니다. 업데이트 알림은 알림 권한을 허용한 경우에만 표시됩니다.</li>
+      <li>앱 데이터는 Android 백업이나 기기 간 이전에 포함되지 않습니다.</li>
       <li>Google 로그인 토큰은 Android의 Google Play 서비스가 관리하며, 앱은 짧게 유지되는 접근 토큰만 기기 안에 보관합니다.</li>
     </ul>
   </section>
@@ -64,12 +68,13 @@
     <h2>5. Google API 서비스 사용자 데이터 정책 준수</h2>
     <p>노트 뷰어가 Google API로부터 받은 정보를 사용하고 다른 앱으로 전송하는 방식은
       <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API 서비스 사용자 데이터 정책</a>의
-      제한적 사용(Limited Use) 요구사항을 포함하여 해당 정책을 준수합니다.</p>
+      제한적 사용(Limited Use) 요구사항을 포함하여 해당 정책을 준수합니다.
+      Google 사용자 데이터는 범용 인공지능(AI)·머신러닝 모델을 개발, 개선 또는 학습시키는 데 사용하지 않습니다.</p>
   </section>
 
   <section>
     <h2>6. 권한 철회</h2>
-    <p>앱의 <b>설정 → 연결 해제</b>를 누르거나,
+    <p>앱의 <b>설정 → 연결 해제</b>를 누르면 Google에 권한 철회를 요청합니다. 또는
       <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Google 계정의 연결된 앱 관리</a>에서 노트 뷰어의 접근 권한을 언제든 철회할 수 있습니다.</p>
   </section>
 
@@ -84,7 +89,7 @@
   </section>
 
   <h1 id="en">Privacy Policy</h1>
-  <p class="muted">Effective: October 19, 2026 · App: Note Viewer</p>
+  <p class="muted">Effective: October 26, 2026 · App: Note Viewer</p>
 
   <section>
     <h2>1. Summary</h2>
@@ -99,6 +104,8 @@
       <li><b>Basic Google account info</b>: the email address and name of the connected account, used only to show which account is connected.</li>
       <li><b>Google Drive files</b>: folder names, PDF file names, modification times, sizes and file contents inside the notes folder you choose,
         used only to build your note list and display PDFs. The app never modifies or deletes files in your Drive.</li>
+      <li><b>Finding the notes folder and detecting changes</b>: to suggest a notes folder and find notes that changed, the app also reads the <b>names, locations (parent folders) and modification times</b> of PDFs and folders elsewhere in your Drive.
+        This is processed on the device only; just the items in the chosen notes folder are kept. The content of files elsewhere is not read.</li>
       <li><b>PDFs you import</b>: PDF files you pick on your phone or share to the app from other apps.</li>
     </ul>
   </section>
@@ -107,8 +114,11 @@
     <h2>3. Storage and retention</h2>
     <ul>
       <li>For offline reading, PDF copies, cover images, search text and settings (favorites, bookmarks, last read page, etc.) are stored <b>only in the app's private storage</b>.</li>
-      <li>This data stays until you delete it: <b>Settings → Delete all offline copies</b>, disconnecting Google Drive, or uninstalling the app.</li>
-      <li><b>Background sync</b> (Android app, can be turned off in Settings): even while the app is closed, it checks Google Drive directly for changes in the notes folder about every 15 minutes and downloads updated PDFs into the app's private storage. Data still only travels between Google Drive and your device.</li>
+      <li>This data stays until you delete it with <b>Settings → Delete all offline copies</b> or by uninstalling the app.
+        Disconnecting removes Drive access and the files fetched in the background, but offline copies of notes you already opened stay until you delete them as above.</li>
+      <li><b>Background sync</b> (Android app, <b>on by default</b>, can be turned off in Settings): even while the app is closed, it checks Google Drive's change history about every 15 minutes to find new notes in your notes folder,
+        and downloads updated PDFs into the app's private storage (on Wi‑Fi only by default). Data still only travels between Google Drive and your device. Update notifications appear only if you allow notifications.</li>
+      <li>App data is excluded from Android backups and device-to-device transfers.</li>
       <li>Google sign-in is managed by Google Play services on Android; the app only keeps short-lived access tokens on the device.</li>
     </ul>
   </section>
@@ -122,12 +132,13 @@
     <h2>5. Google API Services User Data Policy</h2>
     <p>Note Viewer's use and transfer to any other app of information received from Google APIs will adhere to the
       <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
-      including the Limited Use requirements.</p>
+      including the Limited Use requirements.
+      Google user data is not used to develop, improve or train generalized artificial intelligence (AI) or machine learning models.</p>
   </section>
 
   <section>
     <h2>6. Revoking access</h2>
-    <p>Tap <b>Settings → Disconnect</b> in the app, or remove Note Viewer at
+    <p>Tap <b>Settings → Disconnect</b> in the app, which asks Google to revoke the app's access, or remove Note Viewer at
       <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">your Google Account's connected apps</a> at any time.</p>
   </section>
 
