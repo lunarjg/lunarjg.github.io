@@ -29,7 +29,7 @@
   <section>
     <h2>1. 요약</h2>
     <p>노트 뷰어는 사용자의 Google 드라이브에 있는 PDF 노트를 <b>읽기 전용</b>으로 불러와 휴대폰에서 보여 주는 앱입니다.
-      모든 데이터는 <b>사용자의 기기 안에서만</b> 처리되며, 개발자가 운영하는 서버는 없고 개발자나 제3자에게 전송되지 않습니다.
+      모든 데이터는 <b>사용자의 기기 안에서만</b> 처리됩니다. 개발자가 운영하는 서버는 없으며, 노트와 Google 드라이브 데이터는 개발자나 제3자에게 전송되지 않습니다.
       광고, 분석(애널리틱스), 추적 도구를 사용하지 않습니다(필기 검색을 켠 경우 4항의 Google ML Kit 진단 정보는 예외).</p>
   </section>
 
@@ -41,6 +41,7 @@
         노트 목록을 만들고 PDF를 화면에 표시하는 데만 씁니다. 드라이브의 파일을 수정하거나 삭제하지 않습니다.</li>
       <li><b>노트 폴더 찾기와 변경 확인</b>: 노트 폴더를 추천하고 새로 바뀐 노트를 찾기 위해, 드라이브의 다른 위치에 있는 PDF와 폴더의 <b>이름과 위치(상위 폴더), 수정 시각</b>도 읽습니다.
         이 정보는 기기 안에서만 처리하며, 고른 노트 폴더에 속한 항목만 보관하고 나머지는 저장하지 않습니다. 다른 위치의 파일 내용은 읽지 않습니다.</li>
+      <li><b>여러 계정·폴더</b>(Android 앱): 노트 폴더를 여러 개 연결하거나 다른 Google 계정을 추가하면, 각 계정에서 위와 같은 방식으로 고른 폴더만 읽습니다. 계정마다 연결 해제할 수 있습니다.</li>
       <li><b>사용자가 직접 가져온 PDF</b>: 휴대폰에서 고르거나 다른 앱에서 공유한 PDF 파일.</li>
     </ul>
   </section>
@@ -55,6 +56,8 @@
         바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다(기본 설정에서는 Wi‑Fi에서만). 이때도 데이터는 드라이브와 기기 사이에서만 오갑니다. 업데이트 알림은 알림 권한을 허용한 경우에만 표시됩니다.</li>
       <li><b>필기 검색</b>(Android 앱, <b>기본으로 꺼져 있음</b>): 켜면 노트 페이지 이미지를 휴대폰 안에서 Google ML Kit 글자 인식으로 읽고, 인식된 글자와 그 위치를 검색용으로 앱 내부 저장소에 보관합니다.
         페이지 이미지와 인식된 글자는 기기 밖으로 보내지 않습니다. 기능을 끄면 인식 결과도 지워집니다.</li>
+      <li><b>홈 화면 위젯</b>(Android 앱, 사용자가 홈 화면에 추가한 경우): 최근에 읽은 노트 3개의 이름과 페이지, 첫 노트의 첫 페이지 그림을 위젯에 보여 주기 위해 앱 내부 저장소에 보관합니다.
+        위젯은 홈 화면을 보는 누구에게나 보이므로, 보이지 않게 하려면 위젯을 홈 화면에서 지우세요.</li>
       <li>앱 데이터는 Android 백업이나 기기 간 이전에 포함되지 않습니다.</li>
       <li>Google 로그인 토큰은 Android의 Google Play 서비스가 관리하며, 앱은 짧게 유지되는 접근 토큰만 기기 안에 보관합니다.</li>
     </ul>
@@ -63,7 +66,7 @@
   <section>
     <h2>4. 제3자 제공 및 전송</h2>
     <p>개인정보를 판매하거나 제3자에게 제공하지 않습니다.
-      앱은 파일을 불러오기 위해 Google의 서버(Google 드라이브 API)와만 직접 통신하며, 이 통신은 암호화(HTTPS)됩니다.</p>
+      앱은 파일을 불러오기 위해 Google의 서버(Google 로그인과 Google 드라이브 API)와 통신하며, 이 통신은 암호화(HTTPS)됩니다.</p>
     <p>필기 검색을 켜면 글자 인식을 제공하는 Google Play 서비스의 <b>ML Kit</b>가 처음 한 번 인식 모델을 받고,
       Google의 <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit 데이터 공개 문서</a>에 따라 진단과 사용 통계를 위한 기기·앱 정보와 성능 지표를 암호화해 Google에 보낼 수 있습니다.
       노트 페이지 이미지와 인식된 글자는 보내지 않습니다.</p>
@@ -74,12 +77,13 @@
     <p>노트 뷰어가 Google API로부터 받은 정보를 사용하고 다른 앱으로 전송하는 방식은
       <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API 서비스 사용자 데이터 정책</a>의
       제한적 사용(Limited Use) 요구사항을 포함하여 해당 정책을 준수합니다.
-      Google 사용자 데이터는 범용 인공지능(AI)·머신러닝 모델을 개발, 개선 또는 학습시키는 데 사용하지 않습니다.</p>
+      Google 사용자 데이터는 범용 인공지능(AI)·머신러닝 모델을 개발, 개선 또는 학습시키는 데 사용하지 않습니다.
+      필기 검색으로 페이지에서 인식한 글자는 앱 안의 검색에만 쓰이며 기기 밖으로 나가지 않습니다(이미 학습된 기기 안의 모델로 인식할 뿐, 모델을 학습시키지 않습니다).</p>
   </section>
 
   <section>
     <h2>6. 권한 철회</h2>
-    <p>앱의 <b>설정 → 연결 해제</b>를 누르면 Google에 권한 철회를 요청합니다. 또는
+    <p>앱의 <b>설정 → 연결 해제</b>를 누르면 Google에 권한 철회를 요청합니다(계정을 여러 개 연결했다면 계정마다 따로 해제할 수 있습니다). 또는
       <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Google 계정의 연결된 앱 관리</a>에서 노트 뷰어의 접근 권한을 언제든 철회할 수 있습니다.</p>
   </section>
 
@@ -99,7 +103,7 @@
   <section>
     <h2>1. Summary</h2>
     <p>Note Viewer shows PDF notes stored in your Google Drive on your phone, with <b>read-only</b> access.
-      All data is processed <b>on your device only</b>. There is no developer-operated server, and nothing is sent to the developer or to third parties.
+      All data is processed <b>on your device only</b>. There is no developer-operated server, and your notes and Google Drive data are never sent to the developer or to third parties.
       The app contains no ads, analytics or tracking (except the Google ML Kit diagnostics in section 4 when handwriting search is on).</p>
   </section>
 
@@ -111,6 +115,7 @@
         used only to build your note list and display PDFs. The app never modifies or deletes files in your Drive.</li>
       <li><b>Finding the notes folder and detecting changes</b>: to suggest a notes folder and find notes that changed, the app also reads the <b>names, locations (parent folders) and modification times</b> of PDFs and folders elsewhere in your Drive.
         This is processed on the device only; just the items in the chosen notes folder are kept. The content of files elsewhere is not read.</li>
+      <li><b>Several folders and accounts</b> (Android app): if you connect more notes folders or add another Google account, the app reads only the folders you chose in each account, in the same way. Each account can be disconnected on its own.</li>
       <li><b>PDFs you import</b>: PDF files you pick on your phone or share to the app from other apps.</li>
     </ul>
   </section>
@@ -125,6 +130,8 @@
         and downloads updated PDFs into the app's private storage (on Wi‑Fi only by default). Data still only travels between Google Drive and your device. Update notifications appear only if you allow notifications.</li>
       <li><b>Handwriting search</b> (Android app, <b>off by default</b>): when you turn it on, note page images are read on the phone with Google ML Kit text recognition, and the recognized text and its position are kept in the app's private storage for search.
         Page images and recognized text never leave the device. Turning the feature off deletes the results.</li>
+      <li><b>Home screen widget</b> (Android app, if you add it to your home screen): the names and pages of the three notes you read last, and a picture of the first one's first page, are kept in the app's private storage to show them in the widget.
+        Anyone who sees your home screen can see the widget; remove it from the home screen to stop showing it.</li>
       <li>App data is excluded from Android backups and device-to-device transfers.</li>
       <li>Google sign-in is managed by Google Play services on Android; the app only keeps short-lived access tokens on the device.</li>
     </ul>
@@ -132,7 +139,7 @@
 
   <section>
     <h2>4. Sharing</h2>
-    <p>We do not sell or share personal information. The app communicates only with Google's servers (Google Drive API) over encrypted HTTPS to load your files.</p>
+    <p>We do not sell or share personal information. To load your files, the app communicates with Google's servers (Google sign-in and the Google Drive API) over encrypted HTTPS.</p>
     <p>If you turn on handwriting search, <b>ML Kit</b> in Google Play services, which provides the text recognition, downloads its model once and, as described in Google's
       <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit data disclosure</a>, may send device and app information and performance metrics (encrypted) to Google for diagnostics and usage analytics.
       Note page images and recognized text are not sent.</p>
@@ -143,12 +150,13 @@
     <p>Note Viewer's use and transfer to any other app of information received from Google APIs will adhere to the
       <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
       including the Limited Use requirements.
-      Google user data is not used to develop, improve or train generalized artificial intelligence (AI) or machine learning models.</p>
+      Google user data is not used to develop, improve or train generalized artificial intelligence (AI) or machine learning models.
+      Text recognized from your pages by handwriting search is used only for search inside the app and never leaves the device (a pre-trained on-device model reads it; no model is trained).</p>
   </section>
 
   <section>
     <h2>6. Revoking access</h2>
-    <p>Tap <b>Settings → Disconnect</b> in the app, which asks Google to revoke the app's access, or remove Note Viewer at
+    <p>Tap <b>Settings → Disconnect</b> in the app, which asks Google to revoke the app's access (with several accounts, each can be disconnected on its own), or remove Note Viewer at
       <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">your Google Account's connected apps</a> at any time.</p>
   </section>
 
