@@ -49,13 +49,13 @@
   <section>
     <h2>3. 저장 위치와 보관 기간</h2>
     <ul>
-      <li>오프라인 열람을 위해 PDF 사본, 표지 이미지, 검색용 텍스트, 설정(즐겨찾기, 책갈피, 마지막으로 본 페이지 등)을 <b>앱 내부 저장소에만</b> 보관합니다.</li>
+      <li>오프라인 열람을 위해 PDF 사본, 표지 이미지, 검색용 텍스트, 개요가 없는 PDF에서 자동으로 찾은 장(章) 목록, 설정(즐겨찾기, 책갈피, 마지막으로 본 페이지 등)을 <b>앱 내부 저장소에만</b> 보관합니다.</li>
       <li>보관된 데이터는 사용자가 삭제할 때까지 유지됩니다. <b>설정 → 오프라인 사본 모두 삭제</b>나 앱 삭제로 언제든 지울 수 있습니다.
         연결 해제는 드라이브 접근 권한과 백그라운드로 받아 둔 파일을 지우지만, 이미 열어 본 노트의 오프라인 사본은 위 방법으로 지울 때까지 남습니다.</li>
       <li><b>백그라운드 동기화</b>(Android 앱, <b>기본으로 켜져 있으며</b> 설정에서 끌 수 있음): 앱이 닫혀 있어도 약 15분마다 Google 드라이브의 변경 기록을 확인해 노트 폴더의 새 노트를 찾고,
         바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다(기본 설정에서는 Wi‑Fi에서만). 이때도 데이터는 드라이브와 기기 사이에서만 오갑니다. 업데이트 알림은 알림 권한을 허용한 경우에만 표시됩니다.</li>
       <li><b>필기 검색</b>(Android 앱, <b>기본으로 꺼져 있음</b>): 켜면 노트 페이지 이미지를 휴대폰 안에서 Google ML Kit 글자 인식으로 읽고, 인식된 글자와 그 위치를 검색용으로 앱 내부 저장소에 보관합니다.
-        페이지 이미지와 인식된 글자는 기기 밖으로 보내지 않습니다. 기능을 끄면 인식 결과도 지워집니다.</li>
+        페이지 이미지와 인식된 글자는 기기 밖으로 보내지 않습니다. 기능을 끄면 인식 결과와, 인식한 글자로 찾은 장 목록도 지워집니다.</li>
       <li><b>홈 화면 위젯</b>(Android 앱, 사용자가 홈 화면에 추가한 경우): 최근에 읽은 노트 3개의 이름과 페이지, 첫 노트의 첫 페이지 그림을 위젯에 보여 주기 위해 앱 내부 저장소에 보관합니다.
         위젯은 홈 화면을 보는 누구에게나 보이므로, 보이지 않게 하려면 위젯을 홈 화면에서 지우세요.</li>
       <li>앱 데이터는 Android 백업이나 기기 간 이전에 포함되지 않습니다.</li>
@@ -123,13 +123,13 @@
   <section>
     <h2>3. Storage and retention</h2>
     <ul>
-      <li>For offline reading, PDF copies, cover images, search text and settings (favorites, bookmarks, last read page, etc.) are stored <b>only in the app's private storage</b>.</li>
+      <li>For offline reading, PDF copies, cover images, search text, chapter lists found automatically in PDFs without an outline, and settings (favorites, bookmarks, last read page, etc.) are stored <b>only in the app's private storage</b>.</li>
       <li>This data stays until you delete it with <b>Settings → Delete all offline copies</b> or by uninstalling the app.
         Disconnecting removes Drive access and the files fetched in the background, but offline copies of notes you already opened stay until you delete them as above.</li>
       <li><b>Background sync</b> (Android app, <b>on by default</b>, can be turned off in Settings): even while the app is closed, it checks Google Drive's change history about every 15 minutes to find new notes in your notes folder,
         and downloads updated PDFs into the app's private storage (on Wi‑Fi only by default). Data still only travels between Google Drive and your device. Update notifications appear only if you allow notifications.</li>
       <li><b>Handwriting search</b> (Android app, <b>off by default</b>): when you turn it on, note page images are read on the phone with Google ML Kit text recognition, and the recognized text and its position are kept in the app's private storage for search.
-        Page images and recognized text never leave the device. Turning the feature off deletes the results.</li>
+        Page images and recognized text never leave the device. Turning the feature off deletes the results, including chapter lists found from recognized handwriting.</li>
       <li><b>Home screen widget</b> (Android app, if you add it to your home screen): the names and pages of the three notes you read last, and a picture of the first one's first page, are kept in the app's private storage to show them in the widget.
         Anyone who sees your home screen can see the widget; remove it from the home screen to stop showing it.</li>
       <li>App data is excluded from Android backups and device-to-device transfers.</li>
