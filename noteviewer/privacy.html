@@ -24,13 +24,13 @@
   <nav><a href="./">노트 뷰어 홈 / Home</a> · <a href="#ko">한국어</a> · <a href="#en">English</a></nav>
 
   <h1 id="ko">개인정보처리방침</h1>
-  <p class="muted">시행일: 2026년 10월 28일 · 앱: 노트 뷰어 (Note Viewer)</p>
+  <p class="muted">시행일: 2026년 10월 30일 · 앱: 노트 뷰어 (Note Viewer)</p>
 
   <section>
     <h2>1. 요약</h2>
-    <p>노트 뷰어는 사용자의 Google 드라이브에 있는 PDF 노트를 <b>읽기 전용</b>으로 불러와 휴대폰에서 보여 주는 앱입니다.
+    <p>노트 뷰어는 사용자의 Google 드라이브에 있는 PDF 노트(또는 사용자가 추가한 GitHub 공개 저장소의 PDF)를 <b>읽기 전용</b>으로 불러와 휴대폰에서 보여 주는 앱입니다.
       모든 데이터는 <b>사용자의 기기 안에서만</b> 처리됩니다. 개발자가 운영하는 서버는 없으며, 노트와 Google 드라이브 데이터는 개발자나 제3자에게 전송되지 않습니다.
-      광고, 분석(애널리틱스), 추적 도구를 사용하지 않습니다(필기 검색을 켠 경우 4항의 Google ML Kit 진단 정보는 예외).</p>
+      광고, 분석(애널리틱스), 추적 도구를 사용하지 않습니다(필기 검색을 켠 경우 4항의 Google ML Kit 진단 정보는 예외). GitHub 저장소를 추가하면 4항처럼 GitHub가 요청을 받습니다.</p>
   </section>
 
   <section>
@@ -42,6 +42,8 @@
       <li><b>노트 폴더 찾기와 변경 확인</b>: 노트 폴더를 추천하고 새로 바뀐 노트를 찾기 위해, 드라이브의 다른 위치에 있는 PDF와 폴더의 <b>이름과 위치(상위 폴더), 수정 시각</b>도 읽습니다.
         이 정보는 기기 안에서만 처리하며, 고른 노트 폴더에 속한 항목만 보관하고 나머지는 저장하지 않습니다. 다른 위치의 파일 내용은 읽지 않습니다.</li>
       <li><b>여러 계정·폴더</b>(Android 앱): 노트 폴더를 여러 개 연결하거나 다른 Google 계정을 추가하면, 각 계정에서 위와 같은 방식으로 고른 폴더만 읽습니다. 계정마다 연결 해제할 수 있습니다.</li>
+      <li><b>GitHub 공개 저장소</b>(선택): 사용자가 주소를 입력한 공개 저장소의 PDF 파일 이름, 경로, 크기, 내용과 최신 커밋·릴리스 정보.
+        로그인하지 않으며 GitHub 계정이나 비공개 저장소에는 접근하지 않습니다.</li>
       <li><b>사용자가 직접 가져온 PDF</b>: 휴대폰에서 고르거나 다른 앱에서 공유한 PDF 파일.</li>
     </ul>
   </section>
@@ -51,9 +53,11 @@
     <ul>
       <li>오프라인 열람을 위해 PDF 사본, 표지 이미지, 검색용 텍스트, 개요가 없는 PDF에서 자동으로 찾은 장(章) 목록, 설정(즐겨찾기, 책갈피, 마지막으로 본 페이지 등)을 <b>앱 내부 저장소에만</b> 보관합니다.</li>
       <li>보관된 데이터는 사용자가 삭제할 때까지 유지됩니다. <b>설정 → 오프라인 사본 모두 삭제</b>나 앱 삭제로 언제든 지울 수 있습니다.
-        연결 해제는 드라이브 접근 권한과 백그라운드로 받아 둔 파일을 지우지만, 이미 열어 본 노트의 오프라인 사본은 위 방법으로 지울 때까지 남습니다.</li>
+        연결 해제는 드라이브 접근 권한과 백그라운드로 받아 둔 파일을 지우지만, 이미 열어 본 노트의 오프라인 사본은 위 방법으로 지울 때까지 남습니다. 추가한 GitHub 저장소는 Google 연결 해제와 상관없이 남으며, 설정 → GitHub에서 뺄 수 있습니다.</li>
       <li><b>백그라운드 동기화</b>(Android 앱, <b>기본으로 켜져 있으며</b> 설정에서 끌 수 있음): 앱이 닫혀 있어도 약 15분마다 Google 드라이브의 변경 기록을 확인해 노트 폴더의 새 노트를 찾고,
-        바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다(기본 설정에서는 Wi‑Fi에서만). 이때도 데이터는 드라이브와 기기 사이에서만 오갑니다. 업데이트 알림은 알림 권한을 허용한 경우에만 표시됩니다.</li>
+        바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다(기본 설정에서는 Wi‑Fi에서만). 이때 Google 드라이브의 데이터는 드라이브와 기기 사이에서만 오갑니다. 업데이트 알림은 알림 권한을 허용한 경우에만 표시됩니다.
+        GitHub 저장소를 추가했다면 같은 때에 그 저장소의 최신 커밋과 릴리스도 확인해 바뀐 PDF를 알려 줍니다.</li>
+      <li>추가한 GitHub 저장소의 주소는 앱 설정에 보관되며, <b>설정 → GitHub</b>에서 저장소를 빼면 그 저장소의 노트 목록, 오프라인 사본, 필기 인식 결과와 장 목록도 지워집니다.</li>
       <li><b>필기 검색</b>(Android 앱, <b>기본으로 꺼져 있음</b>): 켜면 노트 페이지 이미지를 휴대폰 안에서 Google ML Kit 글자 인식으로 읽고, 인식된 글자와 그 위치를 검색용으로 앱 내부 저장소에 보관합니다.
         페이지 이미지와 인식된 글자는 기기 밖으로 보내지 않습니다. 기능을 끄면 인식 결과와, 인식한 글자로 찾은 장 목록도 지워집니다.</li>
       <li><b>홈 화면 위젯</b>(Android 앱, 사용자가 홈 화면에 추가한 경우): 최근에 읽은 노트 3개의 이름과 페이지, 첫 노트의 첫 페이지 그림을 위젯에 보여 주기 위해 앱 내부 저장소에 보관합니다.
@@ -67,6 +71,10 @@
     <h2>4. 제3자 제공 및 전송</h2>
     <p>개인정보를 판매하거나 제3자에게 제공하지 않습니다.
       앱은 파일을 불러오기 위해 Google의 서버(Google 로그인과 Google 드라이브 API)와 통신하며, 이 통신은 암호화(HTTPS)됩니다.</p>
+    <p>GitHub 저장소를 추가하면 앱이 GitHub의 서버(api.github.com, raw.githubusercontent.com, github.com 등)에 HTTPS로 직접 요청합니다.
+      이때 GitHub는 일반적인 웹 요청처럼 기기의 IP 주소, 요청한 저장소·파일 주소, 그리고 기기 종류와 Android·앱 버전을 알려 주는 일반 요청 정보(User-Agent, 언어 설정)를 받으며,
+      <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub 개인정보처리방침</a>이 적용됩니다.
+      노트, Google 계정 정보, Google 드라이브 데이터는 GitHub로 보내지 않습니다.</p>
     <p>필기 검색을 켜면 글자 인식을 제공하는 Google Play 서비스의 <b>ML Kit</b>가 처음 한 번 인식 모델을 받고,
       Google의 <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit 데이터 공개 문서</a>에 따라 진단과 사용 통계를 위한 기기·앱 정보와 성능 지표를 암호화해 Google에 보낼 수 있습니다.
       노트 페이지 이미지와 인식된 글자는 보내지 않습니다.</p>
@@ -98,13 +106,13 @@
   </section>
 
   <h1 id="en">Privacy Policy</h1>
-  <p class="muted">Effective: October 28, 2026 · App: Note Viewer</p>
+  <p class="muted">Effective: October 30, 2026 · App: Note Viewer</p>
 
   <section>
     <h2>1. Summary</h2>
-    <p>Note Viewer shows PDF notes stored in your Google Drive on your phone, with <b>read-only</b> access.
+    <p>Note Viewer shows PDF notes stored in your Google Drive (or PDFs in public GitHub repositories you add) on your phone, with <b>read-only</b> access.
       All data is processed <b>on your device only</b>. There is no developer-operated server, and your notes and Google Drive data are never sent to the developer or to third parties.
-      The app contains no ads, analytics or tracking (except the Google ML Kit diagnostics in section 4 when handwriting search is on).</p>
+      The app contains no ads, analytics or tracking (except the Google ML Kit diagnostics in section 4 when handwriting search is on). If you add GitHub repositories, GitHub receives the requests as described in section 4.</p>
   </section>
 
   <section>
@@ -116,6 +124,8 @@
       <li><b>Finding the notes folder and detecting changes</b>: to suggest a notes folder and find notes that changed, the app also reads the <b>names, locations (parent folders) and modification times</b> of PDFs and folders elsewhere in your Drive.
         This is processed on the device only; just the items in the chosen notes folder are kept. The content of files elsewhere is not read.</li>
       <li><b>Several folders and accounts</b> (Android app): if you connect more notes folders or add another Google account, the app reads only the folders you chose in each account, in the same way. Each account can be disconnected on its own.</li>
+      <li><b>Public GitHub repositories</b> (optional): file names, paths, sizes and contents of the PDFs in public repositories whose address you enter, and their latest commit and release.
+        The app doesn't sign in and never accesses your GitHub account or private repositories.</li>
       <li><b>PDFs you import</b>: PDF files you pick on your phone or share to the app from other apps.</li>
     </ul>
   </section>
@@ -125,9 +135,11 @@
     <ul>
       <li>For offline reading, PDF copies, cover images, search text, chapter lists found automatically in PDFs without an outline, and settings (favorites, bookmarks, last read page, etc.) are stored <b>only in the app's private storage</b>.</li>
       <li>This data stays until you delete it with <b>Settings → Delete all offline copies</b> or by uninstalling the app.
-        Disconnecting removes Drive access and the files fetched in the background, but offline copies of notes you already opened stay until you delete them as above.</li>
+        Disconnecting removes Drive access and the files fetched in the background, but offline copies of notes you already opened stay until you delete them as above. GitHub repositories you added stay after disconnecting Google; remove them in Settings → GitHub.</li>
       <li><b>Background sync</b> (Android app, <b>on by default</b>, can be turned off in Settings): even while the app is closed, it checks Google Drive's change history about every 15 minutes to find new notes in your notes folder,
-        and downloads updated PDFs into the app's private storage (on Wi‑Fi only by default). Data still only travels between Google Drive and your device. Update notifications appear only if you allow notifications.</li>
+        and downloads updated PDFs into the app's private storage (on Wi‑Fi only by default). Google Drive data still only travels between Google Drive and your device. Update notifications appear only if you allow notifications.
+        If you added GitHub repositories, their latest commit and release are checked at the same time to tell you about changed PDFs.</li>
+      <li>The addresses of the GitHub repositories you add are kept in the app's settings; removing a repository in <b>Settings → GitHub</b> also deletes its note list, offline copies, handwriting results and chapter lists.</li>
       <li><b>Handwriting search</b> (Android app, <b>off by default</b>): when you turn it on, note page images are read on the phone with Google ML Kit text recognition, and the recognized text and its position are kept in the app's private storage for search.
         Page images and recognized text never leave the device. Turning the feature off deletes the results, including chapter lists found from recognized handwriting.</li>
       <li><b>Home screen widget</b> (Android app, if you add it to your home screen): the names and pages of the three notes you read last, and a picture of the first one's first page, are kept in the app's private storage to show them in the widget.
@@ -140,6 +152,10 @@
   <section>
     <h2>4. Sharing</h2>
     <p>We do not sell or share personal information. To load your files, the app communicates with Google's servers (Google sign-in and the Google Drive API) over encrypted HTTPS.</p>
+    <p>If you add GitHub repositories, the app sends requests directly to GitHub's servers (api.github.com, raw.githubusercontent.com, github.com and similar) over HTTPS.
+      Like any web request, GitHub receives your device's IP address, the addresses of the repositories and files requested, and standard request information such as the user agent (device type, Android and app version) and language setting, and the
+      <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a> applies.
+      Your notes, Google account information and Google Drive data are never sent to GitHub.</p>
     <p>If you turn on handwriting search, <b>ML Kit</b> in Google Play services, which provides the text recognition, downloads its model once and, as described in Google's
       <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit data disclosure</a>, may send device and app information and performance metrics (encrypted) to Google for diagnostics and usage analytics.
       Note page images and recognized text are not sent.</p>
