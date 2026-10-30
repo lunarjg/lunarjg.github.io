@@ -75,7 +75,7 @@
       이때 GitHub는 일반적인 웹 요청처럼 기기의 IP 주소, 요청한 저장소·파일 주소, 그리고 기기 종류와 Android·앱 버전을 알려 주는 일반 요청 정보(User-Agent, 언어 설정)를 받으며,
       <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub 개인정보처리방침</a>이 적용됩니다.
       노트, Google 계정 정보, Google 드라이브 데이터는 GitHub로 보내지 않습니다.</p>
-    <p>필기 검색을 켜면 글자 인식을 제공하는 Google Play 서비스의 <b>ML Kit</b>가 처음 한 번 인식 모델을 받고,
+    <p>필기 검색을 켜면 글자 인식을 제공하는 Google Play 서비스의 <b>ML Kit</b>가 처음 쓸 때 인식 모델(앱 언어가 일본어·중국어면 그 언어용, 그 밖에는 한국어·라틴 문자용)을 받고,
       Google의 <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit 데이터 공개 문서</a>에 따라 진단과 사용 통계를 위한 기기·앱 정보와 성능 지표를 암호화해 Google에 보낼 수 있습니다.
       노트 페이지 이미지와 인식된 글자는 보내지 않습니다.</p>
   </section>
@@ -91,8 +91,9 @@
 
   <section>
     <h2>6. 권한 철회</h2>
-    <p>앱의 <b>설정 → 연결 해제</b>를 누르면 Google에 권한 철회를 요청합니다(계정을 여러 개 연결했다면 계정마다 따로 해제할 수 있습니다). 또는
-      <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Google 계정의 연결된 앱 관리</a>에서 노트 뷰어의 접근 권한을 언제든 철회할 수 있습니다.</p>
+    <p>앱의 <b>설정 → 연결 해제</b>를 누르면 Google에 권한 철회를 요청합니다(계정을 여러 개 연결했다면 계정마다 따로 해제할 수 있습니다).
+      인터넷 연결 문제 등으로 Google이 철회를 확인하지 못하면 앱이 알려 드리며, 이때나 언제든
+      <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Google 계정의 연결된 앱 관리</a>에서 ‘노트 뷰어’를 삭제해 접근 권한을 직접 철회할 수 있습니다.</p>
   </section>
 
   <section>
@@ -156,7 +157,7 @@
       Like any web request, GitHub receives your device's IP address, the addresses of the repositories and files requested, and standard request information such as the user agent (device type, Android and app version) and language setting, and the
       <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a> applies.
       Your notes, Google account information and Google Drive data are never sent to GitHub.</p>
-    <p>If you turn on handwriting search, <b>ML Kit</b> in Google Play services, which provides the text recognition, downloads its model once and, as described in Google's
+    <p>If you turn on handwriting search, <b>ML Kit</b> in Google Play services, which provides the text recognition, downloads the recognition model the first time it is used (a Japanese or Chinese one when the app is in that language, otherwise Korean and Latin letters) and, as described in Google's
       <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit data disclosure</a>, may send device and app information and performance metrics (encrypted) to Google for diagnostics and usage analytics.
       Note page images and recognized text are not sent.</p>
   </section>
@@ -172,8 +173,9 @@
 
   <section>
     <h2>6. Revoking access</h2>
-    <p>Tap <b>Settings → Disconnect</b> in the app, which asks Google to revoke the app's access (with several accounts, each can be disconnected on its own), or remove Note Viewer at
-      <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">your Google Account's connected apps</a> at any time.</p>
+    <p>Tap <b>Settings → Disconnect</b> in the app, which asks Google to revoke the app's access (with several accounts, each can be disconnected on its own).
+      If Google can't confirm it (for example, while offline), the app tells you; then, or at any time, remove “노트 뷰어” (Note Viewer) at
+      <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">your Google Account's connected apps</a>.</p>
   </section>
 
   <section>
