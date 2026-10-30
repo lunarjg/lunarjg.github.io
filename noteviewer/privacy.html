@@ -39,7 +39,7 @@
       <li><b>Google 계정 기본 정보</b>: 연결된 계정의 이메일 주소와 이름. 설정 화면에 어느 계정이 연결됐는지 표시하는 데만 씁니다.</li>
       <li><b>Google 드라이브 파일</b>: 사용자가 고른 노트 폴더 안의 폴더 이름, PDF 파일 이름, 수정 시각, 크기, 파일 내용.
         노트 목록을 만들고 PDF를 화면에 표시하는 데만 씁니다. 드라이브의 파일을 수정하거나 삭제하지 않습니다.</li>
-      <li><b>노트 폴더 찾기와 변경 확인</b>: 노트 폴더를 추천하고 새로 바뀐 노트를 찾기 위해, 드라이브의 다른 위치에 있는 PDF와 폴더의 <b>이름과 위치(상위 폴더), 수정 시각</b>도 읽습니다.
+      <li><b>노트 폴더 찾기와 변경 확인</b>: 노트 폴더를 추천하고 새로 바뀐 노트를 찾기 위해, 드라이브의 다른 위치에 있는 파일과 폴더의 <b>이름, 종류, 크기, 위치(상위 폴더), 수정 시각, 미리보기 이미지 주소</b>도 읽습니다. Google 드라이브는 바뀐 항목을 노트 폴더만이 아니라 드라이브 전체에 대해 알려 주기 때문입니다.
         이 정보는 기기 안에서만 처리하며, 고른 노트 폴더에 속한 항목만 보관하고 나머지는 저장하지 않습니다. 다른 위치의 파일 내용은 읽지 않습니다.</li>
       <li><b>여러 계정·폴더</b>(Android 앱): 노트 폴더를 여러 개 연결하거나 다른 Google 계정을 추가하면, 각 계정에서 위와 같은 방식으로 고른 폴더만 읽습니다. 계정마다 연결 해제할 수 있습니다.</li>
       <li><b>GitHub 공개 저장소</b>(선택): 사용자가 주소를 입력한 공개 저장소의 PDF 파일 이름, 경로, 크기, 내용과 최신 커밋·릴리스 정보.
@@ -122,8 +122,8 @@
       <li><b>Basic Google account info</b>: the email address and name of the connected account, used only to show which account is connected.</li>
       <li><b>Google Drive files</b>: folder names, PDF file names, modification times, sizes and file contents inside the notes folder you choose,
         used only to build your note list and display PDFs. The app never modifies or deletes files in your Drive.</li>
-      <li><b>Finding the notes folder and detecting changes</b>: to suggest a notes folder and find notes that changed, the app also reads the <b>names, locations (parent folders) and modification times</b> of PDFs and folders elsewhere in your Drive.
-        This is processed on the device only; just the items in the chosen notes folder are kept. The content of files elsewhere is not read.</li>
+      <li><b>Finding the notes folder and detecting changes</b>: to suggest a notes folder and find notes that changed, the app also reads the <b>names, types, sizes, locations (parent folders), modification times and thumbnail links</b> of files and folders elsewhere in your Drive, because Google Drive reports changes for your whole Drive, not just the notes folder.
+        This is processed on the device only; just the items in the chosen notes folders are kept. The content of files elsewhere is not read.</li>
       <li><b>Several folders and accounts</b> (Android app): if you connect more notes folders or add another Google account, the app reads only the folders you chose in each account, in the same way. Each account can be disconnected on its own.</li>
       <li><b>Public GitHub repositories</b> (optional): file names, paths, sizes and contents of the PDFs in public repositories whose address you enter, and their latest commit and release.
         The app doesn't sign in and never accesses your GitHub account or private repositories.</li>
