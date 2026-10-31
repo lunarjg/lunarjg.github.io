@@ -28,8 +28,8 @@
 
   <section>
     <h2>1. 요약</h2>
-    <p>노트 뷰어는 사용자의 Google 드라이브에 있는 PDF 노트(또는 사용자가 추가한 GitHub 공개 저장소의 PDF)를 <b>읽기 전용</b>으로 불러와 휴대폰에서 보여 주는 앱입니다.
-      모든 데이터는 <b>사용자의 기기 안에서만</b> 처리됩니다. 개발자가 운영하는 서버는 없으며, 노트와 Google 드라이브 데이터는 개발자나 제3자에게 전송되지 않습니다.
+    <p>노트 뷰어는 사용자의 Google 드라이브나 Microsoft OneDrive에 있는 PDF 노트(또는 사용자가 추가한 GitHub 공개 저장소의 PDF)를 <b>읽기 전용</b>으로 불러와 휴대폰에서 보여 주는 앱입니다.
+      모든 데이터는 <b>사용자의 기기 안에서만</b> 처리됩니다. 개발자가 운영하는 서버는 없으며, 노트와 Google 드라이브·OneDrive 데이터는 개발자나 제3자에게 전송되지 않습니다.
       광고, 분석(애널리틱스), 추적 도구를 사용하지 않습니다(필기 검색을 켠 경우 4항의 Google ML Kit 진단 정보는 예외). GitHub 저장소를 추가하면 4항처럼 GitHub가 요청을 받습니다.</p>
   </section>
 
@@ -44,6 +44,10 @@
       <li><b>여러 계정·폴더</b>(Android 앱): 노트 폴더를 여러 개 연결하거나 다른 Google 계정을 추가하면, 각 계정에서 위와 같은 방식으로 고른 폴더만 읽습니다. 계정마다 연결 해제할 수 있습니다.</li>
       <li><b>GitHub 공개 저장소</b>(선택): 사용자가 주소를 입력한 공개 저장소의 PDF 파일 이름, 경로, 크기, 내용과 최신 커밋·릴리스 정보.
         로그인하지 않으며 GitHub 계정이나 비공개 저장소에는 접근하지 않습니다.</li>
+      <li><b>Microsoft OneDrive</b>(선택, Android 앱): Microsoft 계정으로 로그인하면 계정의 이름과 이메일 주소(설정 화면 표시용), 사용자가 고른 OneDrive 폴더 안의 폴더 이름, PDF 파일 이름, 수정 시각, 크기, 파일 내용을 읽습니다.
+        권한은 파일 읽기(Files.Read), 기본 프로필(User.Read), 로그인 유지(offline_access)뿐입니다. 파일 읽기 권한은 OneDrive 전체에 해당하지만 앱은 고른 폴더의 파일 내용만 읽으며, OneDrive의 파일을 수정하거나 삭제하지 않습니다.
+        바뀐 노트를 찾기 위해 OneDrive의 변경 목록을 확인하는데, 이 목록은 OneDrive 전체에 대해 바뀐 항목의 <b>이름, 종류, 크기, 위치(상위 폴더), 수정 시각</b>을 알려 줍니다. 기기 안에서 고른 폴더와 관련 있는지만 확인하고 나머지는 저장하지 않으며, 다른 위치의 파일 내용은 읽지 않습니다.
+        폴더를 고를 때 OneDrive 전체에서 ‘GoodNotes’를 검색하고, 결과(일치하는 항목의 이름과 위치) 중 폴더만 기기 안에서 골라 추천합니다. 검색 결과는 저장하지 않습니다.</li>
       <li><b>사용자가 직접 가져온 PDF</b>: 휴대폰에서 고르거나 다른 앱에서 공유한 PDF 파일.</li>
     </ul>
   </section>
@@ -57,6 +61,8 @@
       <li><b>백그라운드 동기화</b>(Android 앱, <b>기본으로 켜져 있으며</b> 설정에서 끌 수 있음): 앱이 닫혀 있어도 약 15분마다 Google 드라이브의 변경 기록을 확인해 노트 폴더의 새 노트를 찾고,
         바뀐 PDF를 앱 내부 저장소에 미리 받아 둡니다(기본 설정에서는 Wi‑Fi에서만). 이때 Google 드라이브의 데이터는 드라이브와 기기 사이에서만 오갑니다. 업데이트 알림은 알림 권한을 허용한 경우에만 표시됩니다.
         GitHub 저장소를 추가했다면 같은 때에 그 저장소의 최신 커밋과 릴리스도 확인해 바뀐 PDF를 알려 줍니다.</li>
+      <li><b>OneDrive</b>: 고른 폴더의 노트 목록은 앱 내부 저장소에 보관합니다. <b>설정 → OneDrive</b>에서 폴더를 빼면 그 폴더의 노트 목록과 오프라인 사본 등이, <b>연결 해제</b>하면 OneDrive의 모든 노트 목록, 오프라인 사본, 필기 인식 결과, 장 목록, 바뀐 페이지 지문과 이 휴대폰의 로그인 정보가 지워집니다.
+        백그라운드 동기화가 켜져 있으면 약 15분마다 OneDrive의 변경 목록을 확인해 고른 폴더의 새 노트를 알려 줍니다(파일을 미리 받지는 않습니다).</li>
       <li>추가한 GitHub 저장소의 주소는 앱 설정에 보관되며, <b>설정 → GitHub</b>에서 저장소를 빼면 그 저장소의 노트 목록, 오프라인 사본, 필기 인식 결과, 장 목록과 바뀐 페이지 지문도 지워집니다.</li>
       <li><b>필기 검색</b>(Android 앱, <b>기본으로 꺼져 있음</b>): 켜면 노트 페이지 이미지를 휴대폰 안에서 Google ML Kit 글자 인식으로 읽고, 인식된 글자와 그 위치를 검색용으로 앱 내부 저장소에 보관합니다.
         페이지 이미지와 인식된 글자는 기기 밖으로 보내지 않습니다. 기능을 끄면 인식 결과와, 인식한 글자로 찾은 장 목록도 지워집니다.</li>
@@ -64,6 +70,7 @@
         위젯은 홈 화면을 보는 누구에게나 보이므로, 보이지 않게 하려면 위젯을 홈 화면에서 지우세요.</li>
       <li>앱 데이터는 Android 백업이나 기기 간 이전에 포함되지 않습니다.</li>
       <li>Google 로그인 토큰은 Android의 Google Play 서비스가 관리하며, 앱은 짧게 유지되는 접근 토큰만 기기 안에 보관합니다.</li>
+      <li>Microsoft 로그인은 휴대폰의 브라우저에서 이루어지며 앱은 비밀번호를 보지 않습니다. 로그인을 유지하기 위한 갱신 토큰은 Android 키 저장소(Keystore)의 키로 암호화해 앱 내부 저장소에만 보관하고, 짧게 유지되는 접근 토큰은 메모리에만 둡니다.</li>
     </ul>
   </section>
 
@@ -75,6 +82,10 @@
       이때 GitHub는 일반적인 웹 요청처럼 기기의 IP 주소, 요청한 저장소·파일 주소, 그리고 기기 종류와 Android·앱 버전을 알려 주는 일반 요청 정보(User-Agent, 언어 설정)를 받으며,
       <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub 개인정보처리방침</a>이 적용됩니다.
       노트, Google 계정 정보, Google 드라이브 데이터는 GitHub로 보내지 않습니다.</p>
+    <p>OneDrive를 연결하면 앱이 Microsoft의 서버(휴대폰 브라우저에서 열리는 로그인 페이지 login.microsoftonline.com·login.live.com, graph.microsoft.com의 Microsoft Graph API, 그리고 Microsoft가 알려 주는 파일 다운로드 주소)와 HTTPS로 직접 통신합니다.
+      일반적인 웹 요청처럼 Microsoft는 기기의 IP 주소와 기기 종류·Android·앱 버전을 알려 주는 요청 정보를 받으며,
+      <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">Microsoft 개인정보처리방침</a>이 적용됩니다.
+      Google 계정 정보나 Google 드라이브 데이터는 Microsoft로, OneDrive 데이터는 Google이나 GitHub로 보내지 않습니다.</p>
     <p>필기 검색을 켜면 글자 인식을 제공하는 Google Play 서비스의 <b>ML Kit</b>가 처음 쓸 때 인식 모델(앱 언어가 일본어·중국어면 그 언어용, 그 밖에는 한국어·라틴 문자용)을 받고,
       Google의 <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit 데이터 공개 문서</a>에 따라 진단과 사용 통계를 위한 기기·앱 정보와 성능 지표를 암호화해 Google에 보낼 수 있습니다.
       노트 페이지 이미지와 인식된 글자는 보내지 않습니다.</p>
@@ -94,6 +105,9 @@
     <p>앱의 <b>설정 → 연결 해제</b>를 누르면 Google에 권한 철회를 요청합니다(계정을 여러 개 연결했다면 계정마다 따로 해제할 수 있습니다).
       인터넷 연결 문제 등으로 Google이 철회를 확인하지 못하면 앱이 알려 드리며, 이때나 언제든
       <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">Google 계정의 연결된 앱 관리</a>에서 ‘노트 뷰어’를 삭제해 접근 권한을 직접 철회할 수 있습니다.</p>
+    <p>OneDrive는 <b>설정 → OneDrive → 연결 해제</b>를 누르면 이 휴대폰에서 로그인 정보와 OneDrive 데이터가 지워집니다. Microsoft는 앱이 스스로 권한을 없애는 방법을 제공하지 않으므로, 앱의 접근 권한까지 없애려면
+      <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener">Microsoft 계정의 앱 및 서비스</a>에서 ‘Note Viewer’를 제거하세요(회사·학교 계정은 <a href="https://myapps.microsoft.com/" target="_blank" rel="noopener">내 앱</a>에서 ‘Note Viewer’ → 애플리케이션 관리 → 권한 취소. 조직이 승인한 앱이면 관리자에게 요청).
+      Microsoft에서 먼저 권한을 없애도 이미 받은 노트와 목록은 이 휴대폰에 남아 있으니, 앱의 연결 해제나 앱 삭제로 지우세요.</p>
   </section>
 
   <section>
@@ -111,8 +125,8 @@
 
   <section>
     <h2>1. Summary</h2>
-    <p>Note Viewer shows PDF notes stored in your Google Drive (or PDFs in public GitHub repositories you add) on your phone, with <b>read-only</b> access.
-      All data is processed <b>on your device only</b>. There is no developer-operated server, and your notes and Google Drive data are never sent to the developer or to third parties.
+    <p>Note Viewer shows PDF notes stored in your Google Drive or Microsoft OneDrive (or PDFs in public GitHub repositories you add) on your phone, with <b>read-only</b> access.
+      All data is processed <b>on your device only</b>. There is no developer-operated server, and your notes and Google Drive or OneDrive data are never sent to the developer or to third parties.
       The app contains no ads, analytics or tracking (except the Google ML Kit diagnostics in section 4 when handwriting search is on). If you add GitHub repositories, GitHub receives the requests as described in section 4.</p>
   </section>
 
@@ -127,6 +141,10 @@
       <li><b>Several folders and accounts</b> (Android app): if you connect more notes folders or add another Google account, the app reads only the folders you chose in each account, in the same way. Each account can be disconnected on its own.</li>
       <li><b>Public GitHub repositories</b> (optional): file names, paths, sizes and contents of the PDFs in public repositories whose address you enter, and their latest commit and release.
         The app doesn't sign in and never accesses your GitHub account or private repositories.</li>
+      <li><b>Microsoft OneDrive</b> (optional, Android app): when you sign in with a Microsoft account, the app reads the account's name and email address (to show it in Settings), and the folder names, PDF file names, modification times, sizes and file contents inside the OneDrive folders you choose.
+        It asks only to read files (Files.Read), your basic profile (User.Read) and to stay signed in (offline_access). The file permission covers your whole OneDrive, but the app reads file contents only in the folders you choose, and never modifies or deletes files on OneDrive.
+        To find notes that changed, it reads OneDrive's change list, which reports the <b>names, types, sizes, locations (parent folders) and modification times</b> of changed items across your whole OneDrive. The app only checks on the device whether they belong to the chosen folders and keeps nothing else; the content of files elsewhere is not read.
+        When you choose a folder, the app searches your OneDrive for “GoodNotes” and, on the device, suggests only the matching folders (the names and locations of the results are not kept).</li>
       <li><b>PDFs you import</b>: PDF files you pick on your phone or share to the app from other apps.</li>
     </ul>
   </section>
@@ -140,6 +158,8 @@
       <li><b>Background sync</b> (Android app, <b>on by default</b>, can be turned off in Settings): even while the app is closed, it checks Google Drive's change history about every 15 minutes to find new notes in your notes folder,
         and downloads updated PDFs into the app's private storage (on Wi‑Fi only by default). Google Drive data still only travels between Google Drive and your device. Update notifications appear only if you allow notifications.
         If you added GitHub repositories, their latest commit and release are checked at the same time to tell you about changed PDFs.</li>
+      <li><b>OneDrive</b>: the note list of the chosen folders is kept in the app's private storage. Removing a folder in <b>Settings → OneDrive</b> deletes its note list and offline copies; <b>Disconnect</b> deletes all OneDrive note lists, offline copies, handwriting results, chapter lists, page fingerprints and the sign-in on this phone.
+        With background sync on, OneDrive's change list is checked about every 15 minutes to tell you about new notes in the chosen folders (files are not downloaded in advance).</li>
       <li>The addresses of the GitHub repositories you add are kept in the app's settings; removing a repository in <b>Settings → GitHub</b> also deletes its note list, offline copies, handwriting results, chapter lists and page fingerprints.</li>
       <li><b>Handwriting search</b> (Android app, <b>off by default</b>): when you turn it on, note page images are read on the phone with Google ML Kit text recognition, and the recognized text and its position are kept in the app's private storage for search.
         Page images and recognized text never leave the device. Turning the feature off deletes the results, including chapter lists found from recognized handwriting.</li>
@@ -147,6 +167,7 @@
         Anyone who sees your home screen can see the widget; remove it from the home screen to stop showing it.</li>
       <li>App data is excluded from Android backups and device-to-device transfers.</li>
       <li>Google sign-in is managed by Google Play services on Android; the app only keeps short-lived access tokens on the device.</li>
+      <li>Microsoft sign-in happens in your phone's browser; the app never sees your password. The refresh token that keeps you signed in is encrypted with a key from the Android Keystore and kept only in the app's private storage; short-lived access tokens are kept in memory only.</li>
     </ul>
   </section>
 
@@ -157,6 +178,10 @@
       Like any web request, GitHub receives your device's IP address, the addresses of the repositories and files requested, and standard request information such as the user agent (device type, Android and app version) and language setting, and the
       <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a> applies.
       Your notes, Google account information and Google Drive data are never sent to GitHub.</p>
+    <p>If you connect OneDrive, the app communicates directly with Microsoft's servers (the sign-in pages at login.microsoftonline.com and login.live.com, opened in your phone's browser, the Microsoft Graph API at graph.microsoft.com, and the file download addresses Microsoft provides) over HTTPS.
+      Like any web request, Microsoft receives your device's IP address and standard request information such as the user agent (device type, Android and app version), and the
+      <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener">Microsoft Privacy Statement</a> applies.
+      Google account information and Google Drive data are never sent to Microsoft, and OneDrive data is never sent to Google or GitHub.</p>
     <p>If you turn on handwriting search, <b>ML Kit</b> in Google Play services, which provides the text recognition, downloads the recognition model the first time it is used (a Japanese or Chinese one when the app is in that language, otherwise Korean and Latin letters) and, as described in Google's
       <a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">ML Kit data disclosure</a>, may send device and app information and performance metrics (encrypted) to Google for diagnostics and usage analytics.
       Note page images and recognized text are not sent.</p>
@@ -176,6 +201,9 @@
     <p>Tap <b>Settings → Disconnect</b> in the app, which asks Google to revoke the app's access (with several accounts, each can be disconnected on its own).
       If Google can't confirm it (for example, while offline), the app tells you; then, or at any time, remove “노트 뷰어” (Note Viewer) at
       <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener">your Google Account's connected apps</a>.</p>
+    <p>For OneDrive, <b>Settings → OneDrive → Disconnect</b> deletes the sign-in and OneDrive data from this phone. Microsoft doesn't let the app remove its own permission, so to take it away too, remove “Note Viewer” under
+      <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener">Apps and services in your Microsoft account</a> (work or school accounts: <a href="https://myapps.microsoft.com/" target="_blank" rel="noopener">My Apps</a> → “Note Viewer” → Manage your application → Revoke permissions; if your organization approved the app, ask your admin).
+      If you remove the access at Microsoft first, notes already saved stay on this phone until you tap Disconnect or uninstall the app.</p>
   </section>
 
   <section>
