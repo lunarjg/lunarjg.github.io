@@ -49,6 +49,7 @@
       <li>GitHub 공개 저장소와 최신 릴리스의 PDF도 로그인 없이 서재에 (바뀌면 자동으로 새 버전)</li>
       <li>Microsoft OneDrive의 노트 폴더도 연결 (읽기 전용, Android 앱)</li>
       <li>네이버 MYBOX, Dropbox, WebDAV(Nextcloud·Synology·pCloud 등)도 연결 (읽기 전용, Android 앱)</li>
+      <li>Word 문서(.docx)도 휴대폰 안에서 PDF로 바꿔 보기 (문서는 어디로도 보내지 않음)</li>
       <li>필요한 페이지만 골라 PDF·이미지(ZIP)로 저장</li>
     </ul>
   </section>
@@ -56,12 +57,12 @@
   <section>
     <h2>Google 사용자 데이터를 어떻게 쓰나요?</h2>
     <ul>
-      <li>앱은 <b>Google 드라이브 읽기 전용 권한</b>(<code>drive.readonly</code>)으로 사용자가 고른 노트 폴더의 폴더 목록과 PDF 파일을 읽습니다. 파일을 만들거나 수정·삭제하지 않습니다.</li>
+      <li>앱은 <b>Google 드라이브 읽기 전용 권한</b>(<code>drive.readonly</code>)으로 사용자가 고른 노트 폴더의 폴더 목록과 PDF·Word(.docx) 파일을 읽습니다. 파일을 만들거나 수정·삭제하지 않습니다.</li>
       <li>노트 폴더를 추천하고 새 노트를 찾기 위해 드라이브의 다른 위치에 있는 PDF·폴더의 이름과 위치, 수정 시각도 읽지만, 기기 안에서만 처리하고 저장하지 않습니다.</li>
-      <li>읽은 PDF는 휴대폰 안에서만 화면에 표시하고 오프라인용으로 저장합니다. <b>개발자 서버가 없으며</b>, 노트와 Google 드라이브 데이터는 개발자나 제3자에게 전송되지 않습니다. 광고와 추적 도구도 없습니다.</li>
+      <li>읽은 PDF는 휴대폰 안에서만 화면에 표시하고 오프라인용으로 저장합니다. Word 문서는 휴대폰 안에서 PDF로 바꿔 보여 주며 어디로도 보내지 않습니다. <b>개발자 서버가 없으며</b>, 노트와 Google 드라이브 데이터는 개발자나 제3자에게 전송되지 않습니다. 광고와 추적 도구도 없습니다.</li>
       <li>계정 이메일과 이름은 어느 계정이 연결됐는지 설정 화면에 보여 주는 데만 씁니다.</li>
-      <li>OneDrive를 연결하면 앱이 Microsoft 계정 로그인(휴대폰 브라우저)과 파일 읽기 권한(<code>Files.Read</code>, <code>User.Read</code>, <code>offline_access</code>)으로 고른 OneDrive 폴더의 PDF를 읽습니다. 데이터는 Microsoft와 휴대폰 사이에서만 오가며, Google 데이터는 Microsoft로 보내지 않습니다. <b>설정 → 다른 클라우드 → 연결 해제</b>로 기기 안의 데이터를 지우고, <a href="https://account.live.com/consent/Manage">Microsoft 계정의 앱 및 서비스</a>에서 권한을 없앨 수 있습니다.</li>
-      <li>Dropbox(읽기 전용 권한 files.metadata.read·files.content.read·account_info.read), 네이버 MYBOX(사용자가 만든 개인 액세스 토큰), WebDAV 서버(사용자가 입력한 주소·사용자 이름·비밀번호)를 연결하면 앱이 그 서버와 직접 통신해 고른 폴더의 PDF를 읽기만 합니다. Google 데이터는 이 서비스들로 보내지 않습니다.</li>
+      <li>OneDrive를 연결하면 앱이 Microsoft 계정 로그인(휴대폰 브라우저)과 파일 읽기 권한(<code>Files.Read</code>, <code>User.Read</code>, <code>offline_access</code>)으로 고른 OneDrive 폴더의 PDF·Word 문서를 읽습니다. 데이터는 Microsoft와 휴대폰 사이에서만 오가며, Google 데이터는 Microsoft로 보내지 않습니다. <b>설정 → 다른 클라우드 → 연결 해제</b>로 기기 안의 데이터를 지우고, <a href="https://account.live.com/consent/Manage">Microsoft 계정의 앱 및 서비스</a>에서 권한을 없앨 수 있습니다.</li>
+      <li>Dropbox(읽기 전용 권한 files.metadata.read·files.content.read·account_info.read), 네이버 MYBOX(사용자가 만든 개인 액세스 토큰), WebDAV 서버(사용자가 입력한 주소·사용자 이름·비밀번호)를 연결하면 앱이 그 서버와 직접 통신해 고른 폴더의 PDF·Word 문서를 읽기만 합니다. Google 데이터는 이 서비스들로 보내지 않습니다.</li>
       <li>GitHub 저장소를 추가하면 앱이 GitHub 서버에 직접 요청합니다(로그인 없음). GitHub는 일반 웹 요청처럼 IP 주소, 기기 종류 같은 일반 요청 정보, 요청한 저장소 주소를 받습니다.</li>
       <li>필기 검색(기본 꺼짐)은 Google Play 서비스의 ML Kit로 휴대폰 안에서 글자를 인식합니다. 페이지 이미지는 보내지 않으며, ML Kit는 진단용 기기·앱 정보를 Google에 보낼 수 있습니다.</li>
       <li>Google API에서 받은 정보의 사용은 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API 서비스 사용자 데이터 정책</a>(제한적 사용 요건 포함)을 따릅니다. Google 사용자 데이터를 AI·머신러닝 모델 학습에 사용하지 않습니다.</li>
@@ -96,6 +97,7 @@
       <li>PDFs from public GitHub repositories and their latest release, no sign-in (new versions appear automatically)</li>
       <li>Notes folders on Microsoft OneDrive too (read only, Android app)</li>
       <li>NAVER MYBOX, Dropbox and WebDAV (Nextcloud, Synology, pCloud…) too (read only, Android app)</li>
+      <li>Word documents (.docx) too, turned into PDFs on your phone (documents are never uploaded)</li>
       <li>Export just the pages you need as a PDF or images (ZIP)</li>
     </ul>
   </section>
@@ -103,12 +105,12 @@
   <section>
     <h2>How does it use Google user data?</h2>
     <ul>
-      <li>The app uses <b>read-only Google Drive access</b> (<code>drive.readonly</code>) to read the folder list and PDF files inside the notes folder you choose. It never creates, modifies or deletes files.</li>
+      <li>The app uses <b>read-only Google Drive access</b> (<code>drive.readonly</code>) to read the folder list and the PDF and Word (.docx) files inside the notes folder you choose. It never creates, modifies or deletes files.</li>
       <li>To suggest a notes folder and detect new notes, it also reads the names, locations and modification times of PDFs and folders elsewhere in your Drive; this is processed on the device only and not stored.</li>
-      <li>The PDFs are displayed and stored for offline reading only on your phone. <b>There is no developer server</b>; your notes and Google Drive data are never sent to the developer or any third party. No ads or tracking.</li>
+      <li>The PDFs are displayed and stored for offline reading only on your phone; Word documents are converted to PDF on the phone and never uploaded. <b>There is no developer server</b>; your notes and Google Drive data are never sent to the developer or any third party. No ads or tracking.</li>
       <li>The account email and name are used only to show which account is connected in Settings.</li>
-      <li>If you connect OneDrive, the app signs in with your Microsoft account (in your phone's browser) and reads the PDFs in the OneDrive folders you choose with read-only file access (<code>Files.Read</code>, <code>User.Read</code>, <code>offline_access</code>). Data only travels between Microsoft and your phone; Google data is never sent to Microsoft. <b>Settings → Other clouds → Disconnect</b> deletes it from the phone, and you can remove the access under <a href="https://account.live.com/consent/Manage">Apps and services in your Microsoft account</a>.</li>
-      <li>If you connect Dropbox (read-only scopes files.metadata.read, files.content.read, account_info.read), NAVER MYBOX (a personal access token you create) or a WebDAV server (address, user name and password you enter), the app talks directly with that server and only reads the PDFs in the folders you choose. Google data is never sent to these services.</li>
+      <li>If you connect OneDrive, the app signs in with your Microsoft account (in your phone's browser) and reads the PDFs and Word documents in the OneDrive folders you choose with read-only file access (<code>Files.Read</code>, <code>User.Read</code>, <code>offline_access</code>). Data only travels between Microsoft and your phone; Google data is never sent to Microsoft. <b>Settings → Other clouds → Disconnect</b> deletes it from the phone, and you can remove the access under <a href="https://account.live.com/consent/Manage">Apps and services in your Microsoft account</a>.</li>
+      <li>If you connect Dropbox (read-only scopes files.metadata.read, files.content.read, account_info.read), NAVER MYBOX (a personal access token you create) or a WebDAV server (address, user name and password you enter), the app talks directly with that server and only reads the PDFs and Word documents in the folders you choose. Google data is never sent to these services.</li>
       <li>If you add GitHub repositories, the app requests them directly from GitHub's servers (no sign-in); like any web request, GitHub receives your IP address, standard request information such as the device type, and the repository addresses requested.</li>
       <li>Handwriting search (off by default) recognizes text on the phone with ML Kit in Google Play services. Page images are not sent; ML Kit may send device and app diagnostics to Google.</li>
       <li>Use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements. Google user data is not used to train AI/ML models.</li>
@@ -123,7 +125,7 @@
   </section>
 
   <footer>
-    GoodNotes is a trademark of Goodnotes Limited. Note Viewer is not affiliated with Goodnotes Limited. Google Drive is a trademark of Google LLC. Microsoft and OneDrive are trademarks of Microsoft Corporation; Note Viewer is not affiliated with Microsoft. Dropbox is a trademark of Dropbox, Inc. NAVER and MYBOX are trademarks of NAVER Corp. Note Viewer is not affiliated with them.
+    GoodNotes is a trademark of Goodnotes Limited. Note Viewer is not affiliated with Goodnotes Limited. Google Drive is a trademark of Google LLC. Microsoft, OneDrive and Word are trademarks of Microsoft Corporation; Note Viewer is not affiliated with Microsoft. Dropbox is a trademark of Dropbox, Inc. NAVER and MYBOX are trademarks of NAVER Corp. Note Viewer is not affiliated with them.
   </footer>
 </main>
 </body>
