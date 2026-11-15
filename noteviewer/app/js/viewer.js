@@ -1662,7 +1662,10 @@ export class Viewer {
     this.scroller.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
     this.scroller.addEventListener('touchcancel', (e) => this.onTouchEnd(e), { passive: false });
     // desktop: ctrl/⌘ + wheel or trackpad pinch
+    // the reader scrolling by wheel, mouse or scrollbar takes over from a jump under way, as a touch does
+    this.scroller.addEventListener('pointerdown', () => { this.pendingPage = null; });
     this.scroller.addEventListener('wheel', (e) => {
+      this.pendingPage = null;
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const f = this.localPoint(e.clientX, e.clientY);
@@ -1698,7 +1701,11 @@ export class Viewer {
         this.relayoutAt(Math.max(0, target ?? this.current));
         return;
       }
-      if (target != null) { this.goToPage(target, { instant: true }); return; } // a jump under way: land it
+      if (target != null) { // a jump under way: land it (laid out again first if the width changed)
+        if (this.scroller.clientWidth !== this.layoutWidth) this.layout();
+        this.goToPage(target, { instant: true });
+        return;
+      }
       if (this.scroller.clientWidth === this.layoutWidth) {
         // Only the height changed (menu bar hidden/shown, keyboard): keep the pages still on screen.
         if (moved) this.scroller.scrollTop += moved;
