@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Only our own scripts; network only to Google Drive and GitHub. The Android app adds a stricter header (MainActivity.CSP): of GitHub only api.github.com. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com; font-src 'self' data: blob:; connect-src 'self' blob: data: https://www.googleapis.com https://oauth2.googleapis.com https://*.googleusercontent.com https://api.github.com https://graph.microsoft.com https://raw.githubusercontent.com https://media.githubusercontent.com; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101312" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="Read the PDF notes in your Google Drive beautifully on your phone">
+  <title>Note Viewer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <!-- Text is filled in by js/i18n.js: data-i18n (text), data-i18n-aria (aria-label), data-i18n-ph (placeholder). -->
+  <div id="app">
+    <!-- Open notes as tabs (js: renderTabs). Home on the left; long-press a tab and drag to reorder. -->
+    <nav class="tabstrip" id="tabstrip" hidden></nav>
+    <main id="main"></main>
+
+    <nav class="dock" id="tabbar">
+      <a href="#/docs" data-tab="docs" data-i18n-aria="tabLibrary"><span data-icon="library"></span><b data-i18n="tabLibrary"></b></a>
+      <a href="#/search" data-tab="search" data-i18n-aria="tabSearch"><span data-icon="search"></span><b data-i18n="tabSearch"></b></a>
+      <a href="#/settings" data-tab="settings" data-i18n-aria="tabSettings"><span data-icon="gear"></span><b data-i18n="tabSettings"></b></a>
+    </nav>
+    <div class="ptr" aria-hidden="true"><span data-icon="sync"></span></div>
+
+    <section id="viewer" class="viewer" hidden>
+      <header class="vbar" id="vbar">
+        <div class="vbar-row">
+          <div class="vbar-left">
+            <button class="ibtn" data-act="back" data-i18n-aria="back"><span data-icon="chevronLeft"></span></button>
+          </div>
+          <button class="vtitle" data-act="menu"><span class="vtitle-text"></span><span class="vtitle-sub"></span></button>
+          <div class="vbar-right">
+            <button class="ibtn" data-act="search" data-i18n-aria="tabSearch"><span data-icon="search"></span></button>
+            <button class="ibtn" data-act="bookmark" data-i18n-aria="bookmark"><span data-icon="bookmark"></span></button>
+            <button class="ibtn" data-act="menu" data-i18n-aria="more"><span data-icon="more"></span></button>
+          </div>
+        </div>
+        <div class="vsearch" hidden>
+          <div class="searchfield">
+            <span data-icon="search"></span>
+            <input type="search" enterkeyhint="search" data-i18n-ph="searchInNote" autocomplete="off">
+          </div>
+          <span class="vsearch-count"></span>
+          <button class="ibtn sm" data-act="search-prev" data-i18n-aria="prevResult"><span data-icon="chevronUp"></span></button>
+          <button class="ibtn sm" data-act="search-next" data-i18n-aria="nextResult"><span data-icon="chevronDown"></span></button>
+          <button class="ibtn sm" data-act="search-close" data-i18n-aria="cancel"><span data-icon="x"></span></button>
+        </div>
+      </header>
+      <div class="vsearch-results" hidden></div>
+      <div class="vbody">
+        <div class="scroller" id="scroller">
+          <div class="sizer"><div class="pages"></div></div>
+        </div>
+        <div class="vloading" hidden>
+          <div class="spinner"></div>
+          <div class="vloading-text" data-i18n="loading" role="status" aria-live="polite"></div>
+          <div class="progress"><i></i></div>
+        </div>
+        <button class="pagepill" data-i18n-aria="goToPage"></button>
+        <div class="vdock">
+          <button class="ibtn" data-act="thumbs" data-i18n-aria="pageList"><span data-icon="grid"></span></button>
+          <div class="scrub">
+            <input type="range" min="1" max="1" value="1" step="1" data-i18n-aria="goToPage">
+            <span class="scrub-label"></span>
+          </div>
+          <span class="scrub-bubble"></span>
+        </div>
+      </div>
+
+      <div class="sheet thumbsheet" hidden>
+        <header class="sheet-head">
+          <button class="ibtn sheet-left" data-act="pick-start" data-i18n-aria="select"><span data-icon="checkCircle"></span></button>
+          <div class="seg" role="tablist">
+            <button data-seg="thumbs" class="on" data-i18n="segThumbs"></button>
+            <button data-seg="bookmarks" data-i18n="segBookmarks"></button>
+            <button data-seg="outline" data-i18n="segOutline"></button>
+          </div>
+          <b class="pick-count" hidden></b>
+          <button class="textbtn strong sheet-right" data-act="thumbs-close" data-i18n="done"></button>
+        </header>
+        <div class="sheet-body"></div>
+        <!-- select pages → export (PDF / images / ZIP) -->
+        <div class="sheet-foot" hidden>
+          <button class="pick-export" data-act="pick-export"><span data-icon="share"></span><b data-i18n="extract"></b></button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="overlay"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <input type="file" id="filepick" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/hwp+zip,application/haansofthwpx,.hwpx,application/x-hwp,application/haansofthwp,.hwp" multiple hidden>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

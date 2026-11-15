@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com; font-src 'self' data: blob:; connect-src 'self' blob: data: https://www.googleapis.com https://oauth2.googleapis.com https://*.googleusercontent.com https://api.github.com https://raw.githubusercontent.com https://media.githubusercontent.com; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>오픈소스 라이선스 — 노트 뷰어</title>
+  <style>
+    :root { --bg: #f6f3ec; --card: #fffdf8; --text: #1d2321; --muted: #6b736f; --accent: #0f766e; color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #101312; --card: #191e1c; --text: #edf1ef; --muted: #9aa39f; --accent: #3cb7a6; } }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+    section { background: var(--card); border-radius: 14px; padding: 12px 18px; margin: 12px 0; }
+    h2 { font-size: 16px; margin: 4px 0; }
+    p { margin: 4px 0; font-size: 14px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="muted">노트 뷰어는 아래 오픈소스 소프트웨어를 사용합니다. Note Viewer uses the following open-source software.</p>
+
+  <section>
+    <h2>PDF.js 4.10.38</h2>
+    <p>Copyright Mozilla Foundation and contributors</p>
+    <p>Apache License 2.0 · <a href="vendor/pdfjs/LICENSE">전문 보기 / Full text</a> · <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">github.com/mozilla/pdf.js</a></p>
+  </section>
+
+  <section>
+    <h2>pdf-lib 1.17.1</h2>
+    <p>Copyright (c) 2019 Andrew Dillon · includes pako (MIT), tslib (0BSD), @pdf-lib/standard-fonts and @pdf-lib/upng (MIT)</p>
+    <p>MIT License · <a href="vendor/pdf-lib/LICENSE">전문 보기 / Full text</a> · <a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener">github.com/Hopding/pdf-lib</a></p>
+  </section>
+
+  <section>
+    <h2>docx-preview 0.4.1</h2>
+    <p>Copyright (c) 2016-2023 Volodymyr Baydalka · Word 문서를 PDF로 바꿀 때 쓰입니다 / used to turn Word documents into PDFs (changes: vendor/docx-preview/PATCHES.md)</p>
+    <p>Apache License 2.0 · <a href="vendor/docx-preview/LICENSE">전문 보기 / Full text</a> · <a href="https://github.com/VolodymyrBaydalka/docxjs" target="_blank" rel="noopener">github.com/VolodymyrBaydalka/docxjs</a></p>
+  </section>
+
+  <section>
+    <h2>JSZip 3.10.1</h2>
+    <p>Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso · includes pako (MIT, with zlib-licensed code), lie, immediate and setimmediate (MIT)</p>
+    <p>MIT License (dual-licensed MIT or GPLv3; used under MIT) · <a href="vendor/jszip/LICENSE">전문 보기 / Full text</a> · <a href="https://github.com/Stuk/jszip" target="_blank" rel="noopener">github.com/Stuk/jszip</a></p>
+  </section>
+
+  <section>
+    <h2>AndroidX (Activity, Core, WorkManager)</h2>
+    <p>Copyright The Android Open Source Project</p>
+    <p>Apache License 2.0 · <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">apache.org/licenses/LICENSE-2.0</a></p>
+  </section>
+
+  <section>
+    <h2>OkHttp 4.12.0 · Okio (Android 앱의 WebDAV 연결)</h2>
+    <p>Copyright Square, Inc.</p>
+    <p>Apache License 2.0 · <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">apache.org/licenses/LICENSE-2.0</a> — OkHttp includes the Public Suffix List (Mozilla Public License 2.0 · <a href="https://mozilla.org/MPL/2.0/" target="_blank" rel="noopener">mozilla.org/MPL/2.0</a>).</p>
+  </section>
+
+  <section>
+    <h2>Kotlin Standard Library</h2>
+    <p>Copyright JetBrains s.r.o. and Kotlin Programming Language contributors</p>
+    <p>Apache License 2.0 · <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">apache.org/licenses/LICENSE-2.0</a></p>
+  </section>
+
+  <section>
+    <h2>Google Play services (Auth)</h2>
+    <p>Copyright Google LLC</p>
+    <p><a href="https://developer.android.com/studio/terms" target="_blank" rel="noopener">Android Software Development Kit License</a></p>
+  </section>
+
+  <section>
+    <h2>Google ML Kit Text Recognition (Google Play services, Android 앱의 필기 검색)</h2>
+    <p>Copyright Google LLC</p>
+    <p><a href="https://developers.google.com/ml-kit/terms" target="_blank" rel="noopener">ML Kit Terms of Service</a></p>
+  </section>
+
+  <section>
+    <h2>한컴 문서 형식 / Hancom document formats</h2>
+    <p>본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.</p>
+    <p>This product was developed with reference to Hancom's published HWP document file (.hwp) format documents. 한글(HWPX) 문서는 KS X 6101(OWPML)을 따르며, 예전 한글 문서(.hwp)는 한컴이 공개한 HWP 5.0 문서 형식에 따라 읽습니다 / Hangul HWPX documents follow KS X 6101 (OWPML); older Hangul documents (.hwp) are read following Hancom's published HWP 5.0 format. 한컴오피스 한글은 ㈜한글과컴퓨터의 상표이며 노트 뷰어는 한글과컴퓨터와 제휴 관계가 없습니다 / Hancom Office Hangul is a trademark of Hancom Inc.; Note Viewer is not affiliated with Hancom.</p>
+  </section>
+
+  <section>
+    <h2>WenQuanYi Zen Hei (샘플 노트 PDF에 포함된 글꼴 일부)</h2>
+    <p>Copyright WenQuanYi Project contributors</p>
+    <p>GNU GPL v2 with font embedding exception · <a href="http://wenq.org/" target="_blank" rel="noopener">wenq.org</a></p>
+  </section>
+</main>
+</body>
+</html>
