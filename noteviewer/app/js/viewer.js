@@ -1758,6 +1758,8 @@ export class Viewer {
     this.searchInput.addEventListener('focus', () => { if (this.hits) this.searchResults.hidden = false; });
     document.addEventListener('keydown', (e) => {
       if (!this.isOpen || e.target.matches('input') || document.querySelector('#overlay .ov')) return;
+      // The browser's own scrolling keys take over from a jump under way (as touch, wheel and mouse do).
+      if (['ArrowUp', 'ArrowDown', 'Home', 'End', ' '].includes(e.key)) this.pendingPage = null;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { this.flip(1); e.preventDefault(); } // a whole spread
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') { this.flip(-1); e.preventDefault(); }
       if (e.key === 'f') this.setBarsHidden(!this.barsHidden);
