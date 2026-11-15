@@ -47,6 +47,9 @@ export function mountOverlay(html, cls) {
   const app = document.getElementById('app');
   if (app) app.inert = true;
   const before = document.activeElement;
+  // Opened from an item of another overlay (a menu that closes meanwhile): fall back to what opened that one.
+  const fallback = before && before.closest && before.closest('.ov') ? before.closest('.ov').returnFocus : null;
+  wrap.returnFocus = before;
   requestAnimationFrame(() => {
     wrap.classList.add('open');
     if (panel && !panel.contains(document.activeElement)) {
@@ -59,7 +62,8 @@ export function mountOverlay(html, cls) {
     setTimeout(() => {
       wrap.remove();
       if (app && !root.querySelector('.ov')) app.inert = false;
-      if (before && before.focus && document.contains(before)) before.focus({ preventScroll: true });
+      const back = [before, fallback].find((el) => el && el.focus && document.contains(el));
+      if (back && !(app && app.inert && app.contains(back))) back.focus({ preventScroll: true });
     }, 250);
   };
   return { wrap, close };
@@ -100,7 +104,7 @@ export function dialog({ title, message, input, placeholder, url = false, numeri
         <div class="alert-body">
           ${title ? `<b id="dlg${dialogSeq}t">${esc(title)}</b>` : ''}
           ${message ? `<p id="dlg${dialogSeq}d">${esc(message)}</p>` : ''}
-          ${input !== undefined ? `<input class="alert-input" value="${esc(input)}" placeholder="${esc(placeholder || '')}"${numeric ? ' inputmode="numeric" enterkeyhint="go" autocomplete="off"' : ''}${url ? ' type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false"' : ''} />` : ''}
+          ${input !== undefined ? `<input class="alert-input"${title ? ` aria-labelledby="dlg${dialogSeq}t"` : ''}${message ? ` aria-describedby="dlg${dialogSeq}d"` : ''} value="${esc(input)}" placeholder="${esc(placeholder || '')}"${numeric ? ' inputmode="numeric" enterkeyhint="go" autocomplete="off"' : ''}${url ? ' type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false"' : ''} />` : ''}
         </div>
         <div class="alert-btns">
           ${cancelText ? `<button data-r="cancel">${esc(cancelText)}</button>` : ''}

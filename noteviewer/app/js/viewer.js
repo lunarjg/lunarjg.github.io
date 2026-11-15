@@ -982,7 +982,7 @@ export class Viewer {
     });
     // Full-width digits (some keyboards type "４") count as numbers too.
     const n = parseInt(String(v ?? '').replace(/[０-９]/g, (d) => String(d.charCodeAt(0) - 0xff10)).trim(), 10);
-    if (n) this.goToPage(n - 1);
+    if (Number.isFinite(n)) this.goToPage(n - 1); // 0 or less: the first page, like too large a number goes to the last
   }
 
   showInfo() {
@@ -1620,7 +1620,8 @@ export class Viewer {
     const h = this.hits[this.hitIndex];
     const p = this.pages[h.page];
     if (h.box && !this.single && p) {
-      // Bring the highlighted lines (not just the top of the page) into view.
+      // Bring the highlighted lines (not just the top of the page) into view; an earlier jump no longer applies.
+      this.pendingPage = null;
       this.scroller.scrollTo({ top: Math.max(0, p.top + h.box[1] * p.height - this.scroller.clientHeight * 0.3), behavior: scrollBehavior() });
     } else {
       this.goToPage(h.page);
