@@ -602,6 +602,49 @@ button.glist-row:active, a.glist-row:active, label.glist-row:active { background
 }
 .scrub-bubble.show { opacity: 1; }
 
+/* handwriting: drawn over the page, kept on this device */
+.page svg.ink { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ink path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.ink .pn.c-k { stroke: #1d2321; }
+.ink .pn.c-b { stroke: #1f5fd1; }
+.ink .pn.c-r { stroke: #d4382c; }
+.ink .pn.c-g { stroke: #1d8a4a; }
+.ink .hl { stroke-opacity: .38; mix-blend-mode: multiply; }
+.ink .hl.c-y { stroke: #ffd23f; }
+.ink .hl.c-g { stroke: #7fe08c; }
+.ink .hl.c-p { stroke: #ff93bd; }
+.ink .hl.c-b { stroke: #86c8ff; }
+/* dark pages: the same colours, light enough to read on them */
+#viewer.page-dark .ink .pn.c-k { stroke: #e4e6e3; }
+#viewer.page-dark .ink .pn.c-b { stroke: #8db8ff; }
+#viewer.page-dark .ink .pn.c-r { stroke: #ff8f80; }
+#viewer.page-dark .ink .pn.c-g { stroke: #6fd49a; }
+#viewer.page-dark .ink .hl { mix-blend-mode: normal; stroke-opacity: .3; }
+.viewer.inking .plink { pointer-events: none; }
+.viewer.inking .scroller { cursor: crosshair; }
+.viewer.inking .vdock, .viewer.inking .pagepill { display: none; }
+.inkbar {
+  position: absolute; z-index: 3; left: 8px; right: 8px; bottom: calc(12px + var(--sab));
+  display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 6px;
+  max-width: 440px; margin: 0 auto;
+  background: var(--sheet); border-radius: 999px; box-shadow: 0 8px 28px rgba(20, 24, 22, .22), 0 0 0 .5px var(--sep);
+}
+.inkbar[hidden] { display: none; }
+.inkbar .ibtn { flex: none; height: 44px; border-radius: 999px; }
+.inkbar .ibtn.on { background: var(--accent-tint); color: var(--accent); }
+.inkbar .ibtn:disabled { opacity: .35; }
+.inkbar .inkdone { background: var(--accent-fill); color: #fff; }
+/* colours shown as ink on paper: black shows on a dark bar or sheet too */
+.inkcolor i { width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle, var(--sw, #1d2321) 0 56%, #fff 59%); box-shadow: 0 0 0 1px rgba(128, 128, 128, .55); }
+.inkbar-sep { flex: none; width: 1px; height: 24px; background: var(--sep); }
+.swatches { display: flex; gap: 10px; flex: none; }
+.swatches button { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle, var(--sw) 0 56%, #fff 59%); box-shadow: 0 0 0 1px rgba(128, 128, 128, .55); }
+.swatches button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--sheet), 0 0 0 4px var(--accent); }
+.inksheet .seg button { min-height: 40px; min-width: 56px; }
+.inkclear { width: 100%; text-align: start; color: var(--danger); }
+.inkclear .xlabel { color: inherit; }
+.inkclear:disabled { opacity: .45; }
+
 /* tap to hide the menu bar and dock */
 .viewer.bars-hidden .vbar {
   position: absolute; left: 0; right: 0; top: 0;
@@ -830,6 +873,7 @@ body.selecting .dock { display: none; }
   transition: opacity .2s, transform .2s;
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast.show:not(:has(button)) { pointer-events: none; } /* a message alone doesn't catch taps meant for what is under it */
 #toast span { min-width: 0; overflow-wrap: anywhere; } /* a long address wraps inside the box */
 /* Narrow phones: the sync chip shows only its icon (its name stays for screen readers). */
 @media (max-width: 400px) {
@@ -858,6 +902,7 @@ body.in-viewer #toast { bottom: calc(84px + var(--sab)); }
   body.has-tabs .vsearch-results { top: 50px; }
   .vsearch { height: 46px; }
   .vdock { height: 46px; bottom: calc(8px + var(--sab)); }
+  .inkbar { height: 48px; bottom: calc(8px + var(--sab)); }
 }
 
 /* Bottom sheets that scroll (landscape): shadows at the edges show there is more */

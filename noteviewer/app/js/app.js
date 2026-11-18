@@ -1,7 +1,13 @@
 // App shell: routing, library (문서), favorites, search, settings, Drive, GitHub and other clouds' sync.
 
 import { DEFAULT_CLIENT_ID, APP_VERSION } from './config.js';
-import { settings, saveSettings, setSources, sourcesSig, library, ghLibrary, cloudLibrary, localFiles, docState, updateDocState, allDocStates, moveDocState, cache, idb, kv } from './store.js';
+import { inkNoteCount, clearAllInk, moveInk, deleteInk, recoverInk, hasInk } from './ink.js';
+
+dbEvents.blocked = () => toast(t('dbBlocked'), { duration: 15000 });
+dbEvents.newer = () => toast(t('dbNewer'), { action: t('reloadPage'), onAction: () => location.reload(), duration: 30000 });
+recoverInk(); // writing kept when the app was closed in the middle of saving it
+import { clientId } from './store.js';
+import { settings, saveSettings, setSources, sourcesSig, library, ghLibrary, cloudLibrary, localFiles, docState, updateDocState, allDocStates, moveDocState, cache, idb, kv, dbEvents } from './store.js';
 import * as drive from './drive.js';
 import * as github from './github.js';
 import * as onedrive from './onedrive.js';
@@ -18,7 +24,6 @@ import { ocrSupported, ocrOn, loadOcr, indexDoc, doneCount, findAll } from './oc
 import { base64Of } from './export.js';
 import { baseName, formatOf, converted, sniff, cfbFormat, DOCX_TYPE, CONVERT_VERSION, driveFormat, zipFormat, formatTag } from './formats.js';
 
-if (!settings.clientId && DEFAULT_CLIENT_ID) saveSettings({ clientId: DEFAULT_CLIENT_ID });
 settings.ghRepos = github.cleanRepos(settings.ghRepos);
 
 // Defense in depth: the app never uses WebRTC, and WebRTC traffic isn't covered by the CSP or the
@@ -30,7 +35,7 @@ for (const k of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel
 // Inside the Android app (android/) sign-in goes through Play services: no web client ID needed.
 const NATIVE = drive.native;
 const PACKAGE = NATIVE ? NATIVE.packageName() : '';
-const configured = () => !!NATIVE || !!settings.clientId;
+const configured = () => !!NATIVE || !!clientId();
 const driveUsable = () => navigator.onLine && drive.isConnected() && (drive.hasValidToken() || !!NATIVE);
 
 const ROOT = 'root';
@@ -1556,11 +1561,22 @@ function carryOverReplaced(oldFiles, newFiles) {
     const n = fresh.find((f) => f.parent === o.parent && f.name === o.name && !states[f.id]);
     if (!n) continue;
     moveDocState(o.id, n.id);
+    // Its handwriting too (the note open now: the viewer saves what it holds under the new id).
+    const inkLive = viewer.meta && viewer.meta.id === o.id && viewer.inkPages;
+    if (inkLive || hasInk(o.id)) {
+      // The page prints of the version before go along: a newer version moves the writing with them.
+      idb.get('texts', 'fp:' + o.id).then((fp) => fp && idb.get('texts', 'fp:' + n.id).then((have) => have || idb.put('texts', 'fp:' + n.id, fp))).catch(() => {});
+    }
+    if (!inkLive) moveInk(o.id, n.id);
     if (tabs.includes(o.id)) { tabs = tabs.map((id) => (id === o.id ? n.id : id)); saveTabs(); }
     if (activeTab === o.id) activeTab = n.id;
     if (viewer.meta && viewer.meta.id === o.id) { // reading it now: keep saving to the new id
       viewer.meta = { ...viewer.meta, id: n.id };
       viewer.docId = n.id;
+      if (inkLive) {
+        viewer.inkRev = (viewer.inkRev || 0) + 1;
+        viewer.flushInk().then((saved) => { if (saved === true) deleteInk(o.id); }).catch(() => {});
+      }
     }
   }
 }
@@ -2465,6 +2481,11 @@ function renderSettings() {
           <span class="glist-ic red">${icon('trash')}</span>
           <span class="glist-label">${t('deleteAllOffline')}</span>
         </button>
+        ${inkNoteCount() ? `
+        <button class="glist-row danger" data-a="clearink">
+          <span class="glist-ic red">${icon('pen')}</span>
+          <span class="glist-label">${t('inkDeleteAll')}<small>${t('inkNotesCount', { n: inkNoteCount() })}</small></span>
+        </button>` : ''}
         ${hiddenCount ? `
         <button class="glist-row" data-a="hiddenlist">
           <span class="glist-ic gray">${icon('refresh')}</span>
@@ -2557,7 +2578,7 @@ function renderSettings() {
         </button>`) : `
         <button class="glist-row" data-a="clientid">
           <span class="glist-label">${t('oauthClientId')}</span>
-          <span class="glist-value mono">${settings.clientId ? esc(settings.clientId.slice(0, 14)) + '…' : t('none')}</span>${icon('chevronRight', 'chev')}
+          <span class="glist-value mono">${clientId() ? esc(clientId().slice(0, 14)) + '…' : t('none')}</span>${icon('chevronRight', 'chev')}
         </button>
         <button class="glist-row" data-a="copyredirect">
           <span class="glist-label">${t('redirectUri')}<small class="mono">${esc(drive.redirectUri())}</small></span>
@@ -2705,7 +2726,7 @@ function openSetupGuide() {
         <p class="muted small">${t('guideCloudNoteWeb')}</p></section>
 
         <section><h4><i>3</i> ${t('guideConnectTitle')}</h4>
-          <input class="field" id="cid" placeholder="123456-abc.apps.googleusercontent.com" value="${esc(settings.clientId)}" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <input class="field" id="cid" placeholder="123456-abc.apps.googleusercontent.com" value="${esc(clientId())}" autocomplete="off" autocapitalize="off" spellcheck="false">
           <button class="primary-btn" id="cidsave">${icon('google')} ${t('guideSaveConnectBtn')}</button>
         </section>
 
@@ -3323,6 +3344,16 @@ document.addEventListener('click', (e) => {
   else if (act === 'clouddisconnect' && CLOUDS[a.dataset.k]) disconnectCloud(a.dataset.k);
   else if (act === 'cloudadd' && CLOUDS[a.dataset.k]) addCloudFolder(a.dataset.k);
   else if (act === 'cloudmenu' && CLOUDS[a.dataset.k]) cloudFolderMenu(a.dataset.k, +a.dataset.i);
+  else if (act === 'clearink') {
+    dialog({ title: t('inkDeleteAll'), message: t('inkDeleteAllMsg'), okText: t('delete'), danger: true }).then(async (ok) => {
+      if (!ok) return;
+      viewer.dropInk();
+      await (viewer.inkSaving || Promise.resolve()).catch(() => {}); // a save under way must not bring it back
+      try { await clearAllInk(); } catch (e) { toast(String(e.message || e)); return; }
+      render();
+      toast(t('deleted'));
+    });
+  }
   else if (act === 'clearcache') {
     dialog({ title: t('deleteAllOffline'), message: t('deleteAllOfflineMsg'), okText: t('delete'), danger: true }).then(async (ok) => {
       if (!ok) return;
@@ -3336,9 +3367,9 @@ document.addEventListener('click', (e) => {
     });
   } else if (act === 'import') $('#filepick').click();
   else if (act === 'clientid') {
-    dialog({ title: t('oauthClientId'), input: settings.clientId, placeholder: '…apps.googleusercontent.com', okText: t('save') }).then((v) => {
+    dialog({ title: t('oauthClientId'), input: clientId(), placeholder: '…apps.googleusercontent.com', okText: t('save') }).then((v) => {
       if (v === null) return;
-      const changed = v.trim() !== settings.clientId;
+      const changed = (v.trim() || DEFAULT_CLIENT_ID) !== clientId();
       saveSettings({ clientId: v.trim() });
       if (changed) { drive.disconnect(); markReauth(false); }
       render();
@@ -3474,7 +3505,7 @@ window.__gnvBack = () => {
   const ovs = $$('#overlay .ov');
   if (ovs.length) { // dialogs and sheets first
     const top = ovs[ovs.length - 1];
-    const btn = top.querySelector('.asheet-cancel, [data-mp=close], [data-r=cancel], [data-r=ok], [data-x=cancel]');
+    const btn = top.querySelector('.asheet-cancel, [data-mp=close], [data-r=cancel], [data-r=ok], [data-x=cancel], [data-x=done]');
     if (btn) btn.click();
     else {
       top.remove();
@@ -3982,7 +4013,7 @@ function boot() {
       }[auth.error] || t('authFailedWeb', { e: auth.error });
       toast(msg);
     }
-  } else if (!NATIVE && settings.clientId && drive.isConnected() && !drive.hasValidToken() && navigator.onLine) {
+  } else if (!NATIVE && clientId() && drive.isConnected() && !drive.hasValidToken() && navigator.onLine) {
     // Web: renew the expired token with a quick redirect before showing anything.
     // (The Android app renews tokens in place, so it never needs to stop here.)
     if (trySilentAuth()) return;

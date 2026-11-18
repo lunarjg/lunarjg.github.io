@@ -1,6 +1,8 @@
 // Exporting pages: a new PDF made of the chosen pages (copied as-is, so they stay sharp),
 // PNG images of them, or those images bundled into one ZIP file. Plus saving any file.
 
+import { drawInk, inkIntoPdfPage } from './ink.js';
+
 const PDF_LIB = new URL('../vendor/pdf-lib/pdf-lib.esm.min.js', import.meta.url).href;
 const IMAGE_LONG_SIDE = 2200; // px of the longer page side in exported images (~190 dpi for A4)
 const CHUNK = 1536 * 1024; // bytes per piece handed to the Android app (keeps strings small)
@@ -14,19 +16,41 @@ export function safeFileName(name, fallback = 'note') {
   return (s || fallback).slice(0, 120);
 }
 
-/** A new PDF with only the given pages (1-based, in the given order). */
-export async function extractPdf(srcBlob, pageNums) {
-  const { PDFDocument } = await loadPdfLib();
+/**
+ * A new PDF with only the given pages (1-based, in the given order). `inkOf(n)`: handwriting to
+ * draw onto page n, {strokes, vt} (see ink.js), or nothing.
+ */
+export async function extractPdf(srcBlob, pageNums, inkOf = null) {
+  const lib = await loadPdfLib();
+  const { PDFDocument } = lib;
   const src = await PDFDocument.load(await srcBlob.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false });
   const out = await PDFDocument.create();
   const copied = await out.copyPages(src, pageNums.map((n) => n - 1));
-  copied.forEach((p) => out.addPage(p));
+  copied.forEach((p, k) => {
+    out.addPage(p);
+    const ink = inkOf && inkOf(pageNums[k]);
+    if (ink && ink.strokes.length) inkIntoPdfPage(lib, p, ink.strokes, ink.vt);
+  });
   const bytes = await out.save();
   return new Blob([bytes], { type: 'application/pdf' });
 }
 
-/** One page as a PNG (white background). `doc` is an open PDF.js document. */
-export async function pageToPng(doc, n) {
+/**
+ * The whole file with handwriting drawn onto its own pages (so its outline, form fields and
+ * details stay as they are). `inkOf(n)` as in extractPdf.
+ */
+export async function inkIntoWholePdf(srcBlob, inkOf) {
+  const lib = await loadPdfLib();
+  const doc = await lib.PDFDocument.load(await srcBlob.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false });
+  doc.getPages().forEach((p, k) => {
+    const ink = inkOf(k + 1);
+    if (ink && ink.strokes.length) inkIntoPdfPage(lib, p, ink.strokes, ink.vt);
+  });
+  return new Blob([await doc.save()], { type: 'application/pdf' });
+}
+
+/** One page as a PNG (white background), with its handwriting if given. `doc`: an open PDF.js document. */
+export async function pageToPng(doc, n, strokes = null) {
   const page = await doc.getPage(n);
   const base = page.getViewport({ scale: 1 });
   const scale = Math.min(6, IMAGE_LONG_SIDE / Math.max(base.width, base.height));
@@ -39,6 +63,7 @@ export async function pageToPng(doc, n) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   try {
     await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    if (strokes) drawInk(ctx, strokes, scale);
     return await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG'))), 'image/png'));
   } finally {
     canvas.width = canvas.height = 0;

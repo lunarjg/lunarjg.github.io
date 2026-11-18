@@ -72,6 +72,18 @@
             <span class="scrub-label"></span>
           </div>
           <span class="scrub-bubble"></span>
+          <button class="ibtn" data-act="ink" data-i18n-aria="inkMode"><span data-icon="pen"></span></button>
+        </div>
+        <!-- handwriting: kept on this device, drawn over the pages -->
+        <div class="inkbar" role="toolbar" data-i18n-aria="inkTools" hidden>
+          <button class="ibtn" data-ink="pen" data-i18n-aria="inkPen"><span data-icon="pen"></span></button>
+          <button class="ibtn" data-ink="hl" data-i18n-aria="inkHighlighter"><span data-icon="highlighter"></span></button>
+          <button class="ibtn" data-ink="eraser" data-i18n-aria="inkEraser"><span data-icon="eraser"></span></button>
+          <button class="ibtn inkcolor" data-act="ink-style" data-i18n-aria="inkStyle"><i></i></button>
+          <span class="inkbar-sep"></span>
+          <button class="ibtn" data-act="ink-undo" data-i18n-aria="undo" disabled><span data-icon="undo"></span></button>
+          <button class="ibtn" data-act="ink-redo" data-i18n-aria="redo" disabled><span data-icon="redo"></span></button>
+          <button class="ibtn inkdone" data-act="ink-done" data-i18n-aria="inkDone"><span data-icon="check"></span></button>
         </div>
       </div>
 

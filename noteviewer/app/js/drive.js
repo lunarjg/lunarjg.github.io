@@ -5,7 +5,7 @@
 // Accounts: `acct` '' is the account connected first. The Android app can add more Google
 // accounts (their e-mail is their `acct`); each keeps its own token, renewed silently in place.
 
-import { settings, kv } from './store.js';
+import { settings, kv, clientId } from './store.js';
 import { t } from './i18n.js';
 import { DRIVE_TYPES, driveFormat, baseName } from './formats.js';
 
@@ -144,12 +144,12 @@ export function extraAccounts() {
 }
 
 export function startAuth({ silent = false, returnTo = location.hash } = {}) {
-  if (!settings.clientId) throw new Error(t('errNoClientId'));
+  if (!clientId()) throw new Error(t('errNoClientId'));
   // Unguessable state ties the redirect back to this tab (stops login CSRF / token injection).
   const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   sessionStorage.setItem('gnv.oauth', JSON.stringify({ state, returnTo, silent }));
   const p = new URLSearchParams({
-    client_id: settings.clientId,
+    client_id: clientId(),
     redirect_uri: redirectUri(),
     response_type: 'token',
     scope: SCOPE,

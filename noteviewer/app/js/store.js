@@ -1,6 +1,7 @@
 // Persistence: small JSON state in localStorage, PDF blobs and covers in IndexedDB.
 
 import { CONVERT_VERSION } from './formats.js';
+import { DEFAULT_CLIENT_ID } from './config.js';
 
 const LS = 'gnv.';
 
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS = {
   fitHeightLandscape: false, // viewer: whole page on screen when the phone is sideways
   pageDark: 'off', // viewer: off | on | auto (dark pages when the app theme is dark)
   spread: 'auto', // viewer: auto | on | off — two pages side by side on wide screens
+  inkFinger: 'auto', // handwriting: auto (fingers write until a stylus is seen) | on | off
   ocr: false, // Android app: recognize handwriting on the phone so it can be searched
   bgSync: true, // Android app: check Drive for updated notes in the background
   bgNotify: true,
@@ -49,6 +51,9 @@ const DEFAULT_SETTINGS = {
 
 export const settings = Object.assign({}, DEFAULT_SETTINGS, readJSON('settings', {}));
 delete settings.memo; // memorize mode was taken out in 1.26.0: its pen colour goes with the next save
+/** The Google sign-in client for the web version: one entered in Settings, else the built-in one. */
+export const clientId = () => settings.clientId || DEFAULT_CLIENT_ID;
+
 export function saveSettings(patch = {}) {
   Object.assign(settings, patch);
   writeJSON('settings', settings);
@@ -142,25 +147,43 @@ export function moveDocState(from, to) {
   writeJSON('docs', docStates);
 }
 
+/** Notes with writing on them (see ink.js; read here directly: ink.js uses this module). */
+function inkedIds() {
+  try { return new Set(Object.keys(JSON.parse(localStorage.getItem('gnv.inkIndex') || '{}') || {})); } catch { return new Set(); }
+}
+
 export const kv = {
   get: (k, f) => readJSON(k, f),
   set: (k, v) => writeJSON(k, v),
 };
 
 // ---------------------------------------------------------------- IndexedDB
+/** What the app shows when the database waits on another tab (web): set by app.js. */
+export const dbEvents = { blocked: null, newer: null };
 let dbPromise;
 function openDB() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open('goodnotes-viewer', 2);
+      const req = indexedDB.open('goodnotes-viewer', 3); // 3: handwriting (ink)
       req.onupgradeneeded = () => {
         const db = req.result;
-        for (const s of ['pdfs', 'covers', 'texts', 'ocr']) {
+        for (const s of ['pdfs', 'covers', 'texts', 'ocr', 'ink']) {
           if (!db.objectStoreNames.contains(s)) db.createObjectStore(s);
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        // A newer version of the app opened in another tab needs the database upgraded: let go.
+        db.onversionchange = () => {
+          db.close();
+          dbPromise = null;
+          if (dbEvents.newer) dbEvents.newer(); // this tab's code is older now: it should reload
+        };
+        resolve(db);
+      };
+      req.onerror = () => { dbPromise = null; reject(req.error); };
+      // An older version of the app open in another tab holds the database: say so (it waits).
+      req.onblocked = () => { if (dbEvents.blocked) dbEvents.blocked(); };
     });
   }
   return dbPromise;
@@ -219,13 +242,21 @@ export const cache = {
   epoch: 0,
   async remove(id) {
     this.epoch++;
-    await Promise.all([idb.del('pdfs', id), idb.del('covers', id), idb.del('texts', id), idb.del('texts', 'toc:' + id), idb.del('texts', 'fp:' + id), idb.del('ocr', id)]);
+    // (a note with writing on it keeps its page prints: a newer version moves the writing with them)
+    const keepFp = inkedIds().has(id);
+    await Promise.all([idb.del('pdfs', id), idb.del('covers', id), idb.del('texts', id), idb.del('texts', 'toc:' + id), keepFp ? null : idb.del('texts', 'fp:' + id), idb.del('ocr', id)]);
     delete cacheIndex[id];
     writeJSON('cacheIndex', cacheIndex);
   },
   async clearAll() {
     this.epoch++;
+    const kept = [];
+    for (const id of inkedIds()) {
+      const fp = await idb.get('texts', 'fp:' + id).catch(() => null);
+      if (fp) kept.push(['fp:' + id, fp]);
+    }
     await Promise.all([idb.clear('pdfs'), idb.clear('covers'), idb.clear('texts'), idb.clear('ocr')]);
+    for (const [k, v] of kept) await idb.put('texts', k, v).catch(() => {});
     cacheIndex = {};
     writeJSON('cacheIndex', cacheIndex);
   },

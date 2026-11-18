@@ -7,11 +7,12 @@ import { openPdf, renderToCanvas, extractText } from './pdf.js';
 import { docState, updateDocState, kv, settings, saveSettings, idb, cache } from './store.js';
 import { $, $$, esc, scrollBehavior, toast, dialog, actionSheet, mountOverlay, fmtDate, fmtSize } from './ui.js';
 import { icon, hydrateIcons } from './icons.js';
-import { extractPdf, pageToPng, makeZip, saveFile, safeFileName } from './export.js';
+import { extractPdf, inkIntoWholePdf, pageToPng, makeZip, saveFile, safeFileName } from './export.js';
 import { t, joinList, listSep } from './i18n.js';
 import { ocrSupported, ocrOn, loadOcr, indexDoc, doneCount, findAll, boxFor } from './ocr.js';
 import { detectToc } from './toc.js';
-import { fingerprint, changedPages, FP_TAG } from './pagediff.js';
+import { fingerprint, changedPages, followPages, FP_TAG } from './pagediff.js';
+import { loadInk, saveInk, journalInk, nextToken, inkGeneration, SAVED as INK_SAVED, hasInk, MAX_POINTS, pathD, strokeHits, strokeWidth, drawInk, PEN_COLORS, HL_COLORS } from './ink.js';
 
 const PAD = 10; // side/top padding at zoom 1 (CSS px)
 const GAP = 14; // gap between pages at zoom 1
@@ -22,6 +23,8 @@ const QUICK_OPEN = 60; // pages: longer documents show before every page size is
 const MAX_CANVAS_PX = 12e6; // pixel budget per page canvas (memory safety on phones)
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const PEN_NAMES = { k: 'colorBlack', b: 'colorBlue', r: 'colorRed', g: 'colorGreen' };
+const HL_NAMES = { y: 'colorYellow', g: 'colorGreen', p: 'colorPink', b: 'colorBlue' };
 
 export class Viewer {
   constructor(root, { onBack, onMenu }) {
@@ -47,6 +50,11 @@ export class Viewer {
     this.per = 1; // pages per row (2 when shown side by side)
     this.picking = false; // page list: choosing pages to export
     this.picked = new Set();
+    this.inkBar = $('.inkbar', root);
+    this.inking = false; // handwriting tools out
+    this.inkPages = null; // {page number: {v, s: [strokes]}} of the open note (see ink.js)
+    this.inkUndo = [];
+    this.inkRedo = [];
     this.bindEvents();
   }
 
@@ -109,6 +117,7 @@ export class Viewer {
     this.pages = sizes.map((s, i) => ({ i, ...s, el: null, canvas: null, scale: 0, links: false }));
     this.maxRatio = Math.min(4, Math.max(...sizes.map((s) => s.h / s.w)));
     this.buildPages();
+    this.inkLoading = this.loadInkFor(meta, gen);
     this.zoom = 1;
     this.layout();
     this.loading.hidden = true;
@@ -153,7 +162,7 @@ export class Viewer {
       if (gen !== this.gen) return;
       batch.forEach((sz, k) => {
         const p = this.pages[i + k];
-        if (Math.abs(p.w - sz.w) > 0.5 || Math.abs(p.h - sz.h) > 0.5) { p.w = sz.w; p.h = sz.h; changed = true; }
+        if (Math.abs(p.w - sz.w) > 0.5 || Math.abs(p.h - sz.h) > 0.5) { p.w = sz.w; p.h = sz.h; changed = true; if (this.inkOn(p.i + 1)) this.renderInk(p.i); }
       });
     }
     if (!changed || gen !== this.gen) return;
@@ -182,6 +191,7 @@ export class Viewer {
   }
 
   close() {
+    this.setInking(false);
     this.gen++;
     if (this.barsHidden) this.setBarsHidden(false);
     this.closeSearch();
@@ -197,6 +207,10 @@ export class Viewer {
   /** Release the PDF, its page canvases, thumbnails and reading position. */
   dropDocument() {
     clearTimeout(this.saveTimer);
+    this.cancelStroke();
+    // (the same note's newer version reads it back after this save; a copy is kept at once in case
+    // the page goes away before the save finishes)
+    this.flushInk({ now: true });
     this.closeSheet();
     for (const p of this.pages) this.releasePage(p);
     this.pages = [];
@@ -214,6 +228,10 @@ export class Viewer {
     this.hlEl = null;
     this.thumbCache = null;
     this.changed = null;
+    this.inkPages = null;
+    this.inkLost = [];
+    this.inkUndo = [];
+    this.inkRedo = [];
     this.current = -1;
   }
 
@@ -229,6 +247,7 @@ export class Viewer {
     if (!this.sheet.hidden && this.picking) { this.setPicking(false); return true; }
     if (!this.sheet.hidden) { this.closeSheet(); return true; }
     if (!this.searchBar.hidden) { this.closeSearch(); return true; }
+    if (this.inking) { this.setInking(false); return true; }
     return false;
   }
 
@@ -239,6 +258,7 @@ export class Viewer {
    */
   setBarsHidden(hidden) {
     if (!!this.barsHidden === !!hidden) return;
+    if (hidden && this.inking) return; // the writing tools stay at hand
     this.barsHidden = hidden;
     this.root.classList.toggle('bars-hidden', hidden);
     document.body.classList.toggle('reading-full', hidden); // the tab strip hides too
@@ -806,6 +826,12 @@ export class Viewer {
 
   onTouchStart(e) {
     this.pendingPage = null; // the reader takes over: a resize keeps what is on screen again
+    if (this.stroke) {
+      // Writing: the page stays still. A second finger while a finger writes is a pinch instead
+      // (a hand resting on the screen while a stylus writes is not).
+      if (this.stroke.finger && e.touches.length > 1) this.cancelStroke();
+      else { e.preventDefault(); this.touchStart = null; return; }
+    }
     if (e.touches.length === 2 && !this.pinch) {
       const [a, b] = e.touches;
       const f = this.localPoint((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
@@ -829,6 +855,7 @@ export class Viewer {
   }
 
   onTouchMove(e) {
+    if (this.stroke) { e.preventDefault(); return; }
     const pz = this.pinch;
     if (pz && !pz.animating && e.touches.length === 2) {
       e.preventDefault();
@@ -871,6 +898,7 @@ export class Viewer {
     // double tap → toggle zoom
     const ts = this.touchStart;
     this.touchStart = null;
+    if (this.inking) return; // writing: taps write dots, they don't turn pages or hide the bars
     if (!ts || ts.moved || e.touches.length || Date.now() - ts.time > 300) return;
     if (e.target.closest && e.target.closest('.plink')) return;
     const now = Date.now();
@@ -1247,6 +1275,8 @@ export class Viewer {
     const base = safeFileName(this.meta.name);
     let fmt = kv.get('exportFormat', 'pdf') === 'image' ? 'image' : 'pdf';
     let zip = !!kv.get('exportZip', false);
+    const hasInkPicked = nums.some((n) => this.inkOn(n));
+    let withInk = kv.get('exportInk', true) !== false;
     const html = `
       <div class="asheet xsheet" role="dialog">
         <div class="asheet-head"><b>${esc(t('exportTitle'))}</b><small>${esc(t('exportPages', { n: nums.length, list: pageRanges(nums) }))}</small></div>
@@ -1256,6 +1286,7 @@ export class Viewer {
         <label class="xrow xname"><span class="xlabel">${esc(t('fileName'))}</span>
           <span class="xname-field"><input type="text" value="${esc(base)}" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false"><span class="xext"></span></span>
         </label>
+        <label class="xrow" data-x="inkrow"${hasInkPicked ? '' : ' hidden'}><span class="xlabel">${esc(t('exportInk'))}</span><input type="checkbox" class="switch" data-x="ink"></label>
         <label class="xrow" data-x="ziprow"><span class="xlabel">${esc(t('zipImages'))}<small></small></span><input type="checkbox" class="switch" data-x="zip"></label>
         <div class="xprogress" hidden><span></span><div class="progress"><i></i></div></div>
         <div class="xbtns"><button data-x="cancel">${esc(t('cancel'))}</button><button class="strong" data-x="go">${esc(t('exportGo'))}</button></div>
@@ -1265,6 +1296,9 @@ export class Viewer {
     const input = q('input[type=text]');
     const zipBox = q('[data-x=zip]');
     zipBox.checked = zip;
+    const inkBox = q('[data-x=ink]');
+    inkBox.checked = withInk;
+    inkBox.onchange = () => { withInk = inkBox.checked; kv.set('exportInk', withInk); };
     let busy = false;
     let cancelled = false;
     const name = () => safeFileName(input.value, base);
@@ -1302,12 +1336,13 @@ export class Viewer {
       if (this.blob !== src.blob || this.doc !== src.doc || this.restricted()) { shut(); if (this.restricted()) toast(t('restrictedDoc'), { duration: 6000 }); return; }
       busy = true;
       q('[data-x=go]').disabled = true;
-      input.disabled = zipBox.disabled = true;
+      input.disabled = zipBox.disabled = inkBox.disabled = true;
       const file = name();
       try {
+        const inkMap = hasInkPicked && withInk ? await this.inkForExport(nums, src) : null;
         const msg = fmt === 'pdf'
-          ? await this.exportPdf(nums, file, progress, src)
-          : await this.exportImages(nums, file, nums.length > 1 && zip, progress, () => cancelled || this.doc !== src.doc, src);
+          ? await this.exportPdf(nums, file, progress, src, inkMap)
+          : await this.exportImages(nums, file, nums.length > 1 && zip, progress, () => cancelled || this.doc !== src.doc, src, inkMap);
         if (cancelled) return;
         close();
         this.setPicking(false);
@@ -1317,26 +1352,39 @@ export class Viewer {
         if (cancelled) return;
         busy = false;
         q('[data-x=go]').disabled = false;
-        input.disabled = zipBox.disabled = false;
+        input.disabled = zipBox.disabled = inkBox.disabled = false;
         q('.xprogress').hidden = true;
         toast(t('exportFailed', { e: e.message || e }), { duration: 4500 });
       }
     };
   }
 
-  async exportPdf(nums, file, progress, src) {
+  /** The handwriting of the chosen pages, with where each page sits ({strokes, vt}; see ink.js). */
+  async inkForExport(nums, src) {
+    const map = new Map();
+    for (const n of nums) {
+      const strokes = this.inkOn(n);
+      if (!strokes) continue;
+      const page = await src.doc.getPage(n);
+      map.set(n, { strokes: strokes.slice(), vt: page.getViewport({ scale: 1 }).transform });
+    }
+    return map.size ? map : null;
+  }
+
+  async exportPdf(nums, file, progress, src, inkMap = null) {
     if (!src || src.blob.restricted) throw new Error(t('restrictedDoc'));
     progress(t('exportingPdf'), null);
-    const blob = nums.length === src.doc.numPages && nums.every((n, i) => n === i + 1)
-      ? src.blob // every page in order: the original file as it is
-      : await extractPdf(src.blob, nums);
+    const whole = nums.length === src.doc.numPages && nums.every((n, i) => n === i + 1);
+    const blob = whole && !inkMap ? src.blob // every page in order, nothing written on them: the original file as it is
+      : whole ? await inkIntoWholePdf(src.blob, (n) => inkMap.get(n)) // (keeps its outline and forms)
+        : await extractPdf(src.blob, nums, inkMap && ((n) => inkMap.get(n)));
     progress(t('exportingSave'), null);
     const name = file + '.pdf';
     if (!(await saveFile(blob, name))) throw new Error(t('saveFailed'));
     return t('savedToDownloads', { name });
   }
 
-  async exportImages(nums, file, zip, progress, isCancelled, src) {
+  async exportImages(nums, file, zip, progress, isCancelled, src, inkMap = null) {
     if (!src || src.blob.restricted) throw new Error(t('restrictedDoc'));
     const pad = String(src.doc.numPages).length;
     const multi = nums.length > 1;
@@ -1344,7 +1392,7 @@ export class Viewer {
     for (let k = 0; k < nums.length; k++) {
       if (isCancelled()) return '';
       progress(t('exportingImages', { i: k + 1, n: nums.length }), k / nums.length);
-      const png = await pageToPng(src.doc, nums[k]);
+      const png = await pageToPng(src.doc, nums[k], inkMap && inkMap.get(nums[k]) ? inkMap.get(nums[k]).strokes : null);
       const name = multi ? `${file}_${String(nums[k]).padStart(pad, '0')}.png` : `${file}.png`;
       if (zip) files.push({ name, blob: png });
       else if (!(await saveFile(png, name, { folder: multi ? file : '' }))) throw new Error(t('saveFailed'));
@@ -1369,6 +1417,8 @@ export class Viewer {
         const page = await this.doc.getPage(n);
         const c = await renderToCanvas(page, 150);
         if (gen !== this.gen) return;
+        const strokes = this.inkOn(n);
+        if (strokes && this.pages[n - 1]) drawInk(c.getContext('2d'), strokes, c.width / this.pages[n - 1].w);
         url = c.toDataURL('image/jpeg', 0.8);
         c.width = c.height = 0;
         this.thumbCache.set(n, url);
@@ -1672,7 +1722,27 @@ export class Viewer {
       const f = this.localPoint(e.clientX, e.clientY);
       this.applyZoom(this.zoom * Math.exp(-e.deltaY * 0.01), f.x, f.y);
     }, { passive: false });
+    // Writing is saved a moment after each change; going to the background or closing saves it now.
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { this.cancelStroke(); this.flushInk(); } });
+    window.addEventListener('pagehide', () => { this.cancelStroke(); this.flushInk({ now: true }); });
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'gnv.inkGen') { this.dropInk(); return; }
+      if (e.key !== INK_SAVED || !this.meta || !this.inkPages || this.stroke) return;
+      let v = null;
+      try { v = JSON.parse(e.newValue || 'null'); } catch { /* */ }
+      // (with changes of its own not yet saved, this tab's save comes after and keeps them)
+      if (v && v.id === this.meta.id && this.inkRev === this.inkSavedRev && !this.inkTimer) this.inkLoading = this.loadInkFor(this.meta, this.gen);
+    });
+    this.scroller.addEventListener('pointerdown', (e) => this.inkDown(e));
+    this.scroller.addEventListener('pointermove', (e) => this.inkMove(e));
+    this.scroller.addEventListener('pointerup', (e) => this.inkUp(e));
+    this.scroller.addEventListener('pointercancel', () => this.cancelStroke());
+    this.inkBar.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ink]');
+      if (b) this.setInkTool({ tool: b.dataset.ink });
+    });
     this.scroller.addEventListener('click', (e) => {
+      if (this.inking) return;
       if (Date.now() - (this.lastTouch || 0) < 800 || e.target.closest('.plink') || e.detail > 1) return;
       clearTimeout(this.tapTimer);
       const edge = this.edgeTap(e.clientX);
@@ -1680,6 +1750,7 @@ export class Viewer {
       this.tapTimer = setTimeout(() => this.onSingleTap(), 280);
     });
     this.scroller.addEventListener('dblclick', (e) => {
+      if (this.inking) return;
       clearTimeout(this.tapTimer);
       if (e.target.closest('.plink')) return;
       const f = this.localPoint(e.clientX, e.clientY);
@@ -1744,6 +1815,11 @@ export class Viewer {
       else if (act === 'search-next') this.gotoHit(this.hitIndex + 1);
       else if (act === 'search-prev') this.gotoHit(this.hitIndex - 1);
       else if (act === 'ocr-enable') this.enableOcr();
+      else if (act === 'ink') this.setInking(true);
+      else if (act === 'ink-done') this.setInking(false);
+      else if (act === 'ink-undo') this.inkStep(true);
+      else if (act === 'ink-redo') this.inkStep(false);
+      else if (act === 'ink-style') this.openInkStyle();
     });
     $$('.seg button', this.sheet).forEach((b) => { b.onclick = () => this.showSheetTab(b.dataset.seg); });
     this.bindPickDrag();
@@ -1758,6 +1834,12 @@ export class Viewer {
     this.searchInput.addEventListener('focus', () => { if (this.hits) this.searchResults.hidden = false; });
     document.addEventListener('keydown', (e) => {
       if (!this.isOpen || e.target.matches('input') || document.querySelector('#overlay .ov')) return;
+      if (this.inking) {
+        const mod = e.ctrlKey || e.metaKey;
+        if (e.key === 'Escape' && this.sheet.hidden && this.searchBar.hidden) { this.setInking(false); e.preventDefault(); return; }
+        if (mod && (e.key === 'z' || e.key === 'Z')) { this.inkStep(!e.shiftKey); e.preventDefault(); return; }
+        if (mod && (e.key === 'y' || e.key === 'Y')) { this.inkStep(false); e.preventDefault(); return; }
+      }
       // The browser's own scrolling keys take over from a jump under way (as touch, wheel and mouse do).
       if (['ArrowUp', 'ArrowDown', 'Home', 'End', ' '].includes(e.key)) this.pendingPage = null;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { this.flip(1); e.preventDefault(); } // a whole spread
@@ -1780,6 +1862,7 @@ export class Viewer {
       items: [
         { label: t('goToPageMenu'), icon: 'page', onClick: () => this.askPage() },
         { label: t('showPageList'), icon: 'grid', onClick: () => this.openSheet('thumbs') },
+        { label: t('inkMode'), icon: 'pen', onClick: () => this.setInking(true) },
         this.single
           ? { label: t('scrollView'), icon: 'docs', onClick: () => this.setMode('scroll') }
           : { label: t('singlePageView'), icon: 'page', onClick: () => this.setMode('single') },
@@ -1809,6 +1892,469 @@ export class Viewer {
 
   // ------------------------------------------------------------------ changed pages
   /** Pages marked as changed in this version (found when it was first opened). */
+  // ------------------------------------------------------------------ handwriting (kept on this device)
+  /** The note's handwriting, after any save still under way (a newer version reopening the note). */
+  async loadInkFor(meta, gen) {
+    if (this.inkSaving) await this.inkSaving.catch(() => {});
+    const inkGen = inkGeneration();
+    const rec = await loadInk(meta.id);
+    if (gen !== this.gen) return;
+    this.inkPages = rec.pages;
+    this.inkGen = inkGen;
+    this.inkLost = rec.lost || [];
+    this.inkUndo = [];
+    this.inkRedo = [];
+    this.inkRev = this.inkSavedRev = 0;
+    for (const n of Object.keys(this.inkPages)) this.renderInk(+n - 1);
+    this.updateInkBar();
+  }
+
+  inkOn(n) {
+    const e = this.inkPages && this.inkPages[n];
+    return e && e.s.length ? e.s : null;
+  }
+
+  strokeSvg(st) {
+    const hl = st.k === 'hl';
+    const c = (hl ? HL_COLORS : PEN_COLORS)[st.c] ? st.c : hl ? 'y' : 'k';
+    return `<path class="${hl ? 'hl' : 'pn'} c-${c}" stroke-width="${Number(st.w) || 1}" d="${pathD(st.p)}"/>`;
+  }
+
+  /** The page's handwriting layer (made when needed). */
+  inkSvg(p) {
+    let svg = p.el.querySelector('svg.ink');
+    if (!svg) {
+      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'ink');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('preserveAspectRatio', 'none');
+      p.el.insertBefore(svg, p.el.querySelector('.chg-tag'));
+    }
+    svg.setAttribute('viewBox', `0 0 ${p.w} ${p.h}`);
+    return svg;
+  }
+
+  renderInk(i) {
+    const p = this.pages[i];
+    if (!p || !p.el) return;
+    const strokes = this.inkOn(i + 1);
+    if (!strokes && !(this.stroke && this.stroke.p === p && this.stroke.path)) { const old = p.el.querySelector('svg.ink'); if (old) old.remove(); return; }
+    if (!strokes) { this.inkSvg(p).replaceChildren(this.stroke.path); return; }
+    const svg = this.inkSvg(p);
+    svg.innerHTML = strokes.map((st) => this.strokeSvg(st)).join('');
+    // (a stroke being drawn on this page stays in view)
+    if (this.stroke && this.stroke.p === p && this.stroke.path) svg.appendChild(this.stroke.path);
+  }
+
+  /** Fingers draw too, unless a stylus was seen on this device (then they move the page). */
+  fingerDraws() {
+    const f = settings.inkFinger;
+    return f === 'on' || (f !== 'off' && !kv.get('penSeen', false));
+  }
+
+  notePen() {
+    if (kv.get('penSeen', false)) return;
+    kv.set('penSeen', true);
+    if (settings.inkFinger !== 'on' && settings.inkFinger !== 'off') toast(t('inkPenFound'), { duration: 6000 });
+  }
+
+  inkTool() {
+    const s = kv.get('inkTool', {});
+    const tool = ['pen', 'hl', 'eraser'].includes(s.tool) ? s.tool : 'pen';
+    const draw = tool === 'eraser' ? (s.last === 'hl' ? 'hl' : 'pen') : tool; // what the colour button sets
+    return {
+      tool,
+      draw,
+      c: draw === 'hl' ? (HL_COLORS[s.hc] ? s.hc : 'y') : (PEN_COLORS[s.pc] ? s.pc : 'k'),
+      size: draw === 'hl' ? (s.hs ? 1 : 0) : (s.ps ? 1 : 0),
+    };
+  }
+
+  setInkTool(patch) {
+    const s = Object.assign({}, kv.get('inkTool', {}), patch);
+    if (patch.tool && patch.tool !== 'eraser') s.last = patch.tool;
+    kv.set('inkTool', s);
+    this.updateInkBar();
+  }
+
+  setInking(on) {
+    on = !!on && !!this.doc;
+    if (on === !!this.inking) return;
+    this.cancelStroke();
+    this.inking = on;
+    this.root.classList.toggle('inking', on);
+    this.inkBar.hidden = !on;
+    if (on) {
+      this.setBarsHidden(false);
+      this.closeSearch();
+      this.updateInkBar();
+      if (!kv.get('inkHintShown', false)) {
+        kv.set('inkHintShown', true);
+        toast(t('inkHint', { how: t(this.fingerDraws() ? 'inkHowFinger' : 'inkHowPen') }), { duration: 7000 });
+      }
+      const b = $('[data-ink].on', this.inkBar) || $('[data-ink]', this.inkBar);
+      if (b && document.activeElement && this.root.contains(document.activeElement)) b.focus({ preventScroll: true });
+    } else {
+      this.flushInk();
+      const pen = $('.vdock [data-act="ink"]', this.root);
+      if (pen && this.inkBar.contains(document.activeElement)) pen.focus({ preventScroll: true });
+    }
+  }
+
+  updateInkBar() {
+    if (!this.inkBar) return;
+    const tl = this.inkTool();
+    $$('[data-ink]', this.inkBar).forEach((b) => {
+      const on = b.dataset.ink === tl.tool;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    const hl = tl.draw === 'hl';
+    const sw = $('.inkcolor', this.inkBar);
+    if (sw) {
+      sw.style.setProperty('--sw', (hl ? HL_COLORS : PEN_COLORS)[tl.c]);
+      sw.setAttribute('aria-label', `${t('inkStyle')}: ${t((hl ? HL_NAMES : PEN_NAMES)[tl.c])}`);
+    }
+    const u = $('[data-act="ink-undo"]', this.inkBar);
+    const r = $('[data-act="ink-redo"]', this.inkBar);
+    const focused = document.activeElement;
+    if (u) u.disabled = !this.inkUndo || !this.inkUndo.length;
+    if (r) r.disabled = !this.inkRedo || !this.inkRedo.length;
+    // A button that just turned itself off had the focus: give it to its partner, or the tool.
+    if (focused && focused.disabled && this.inkBar.contains(focused)) {
+      const other = focused === u ? r : u;
+      (other && !other.disabled ? other : $('[data-ink].on', this.inkBar) || this.inkBar).focus({ preventScroll: true });
+    }
+  }
+
+  /** A point of the pointer on the stroke's page, in the page's own units. */
+  inkPoint(s, e) {
+    const r = s.rect;
+    return {
+      x: clamp((e.clientX - r.left) / r.width, 0, 1) * s.p.w,
+      y: clamp((e.clientY - r.top) / r.height, 0, 1) * s.p.h,
+    };
+  }
+
+  inkDown(e) {
+    if (!this.inking || !this.inkPages || this.pinch || this.stroke) return;
+    if (e.pointerType === 'pen') this.notePen();
+    const finger = e.pointerType === 'touch';
+    if (finger && (!this.fingerDraws() || !e.isPrimary)) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const el = e.target.closest && e.target.closest('.page');
+    const p = el && this.pages[+el.dataset.i];
+    if (!p || p.el !== el) return;
+    e.preventDefault();
+    if (!finger) try { this.scroller.setPointerCapture(e.pointerId); } catch { /* fine without */ }
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const tl = this.inkTool();
+    const s = { id: e.pointerId, p, finger, rect, unit: p.w / rect.width };
+    // A stylus's eraser end (or its side button held) erases, whatever tool is chosen.
+    const penErase = e.pointerType === 'pen' && (e.buttons & 32 || e.buttons & 2);
+    if (tl.tool === 'eraser' || penErase) {
+      s.erase = [];
+      this.stroke = s;
+      this.eraseAt(s, this.inkPoint(s, e));
+      return;
+    }
+    const pt = this.inkPoint(s, e);
+    s.st = { k: tl.draw === 'hl' ? 'hl' : 'pen', c: tl.c, w: strokeWidth(tl.draw, tl.size, p.w), p: [pt.x, pt.y] };
+    const svg = this.inkSvg(p);
+    svg.insertAdjacentHTML('beforeend', this.strokeSvg(s.st));
+    s.path = svg.lastElementChild;
+    this.stroke = s;
+  }
+
+  inkMove(e) {
+    const s = this.stroke;
+    if (!s || e.pointerId !== s.id) return;
+    e.preventDefault();
+    const evs = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
+    const r = s.p.el.getBoundingClientRect();
+    if (r.width && r.height) s.rect = r;
+    for (const ev of evs.length ? evs : [e]) {
+      const pt = this.inkPoint(s, ev);
+      if (s.erase) { this.eraseAt(s, pt); continue; }
+      const p = s.st.p;
+      if (p.length >= MAX_POINTS * 2) break; // a very long stroke stops growing
+      // Points closer than half a screen pixel add nothing.
+      if (Math.hypot(pt.x - p[p.length - 2], pt.y - p[p.length - 1]) < s.unit * 0.5) continue;
+      p.push(pt.x, pt.y);
+    }
+    if (s.st) s.path.setAttribute('d', pathD(s.st.p));
+  }
+
+  inkUp(e) {
+    const s = this.stroke;
+    if (!s || e.pointerId !== s.id) return;
+    this.stroke = null;
+    const n = s.p.i + 1;
+    if (s.erase) {
+      if (s.erase.length) this.pushInkOp({ op: 'erase', n, items: s.erase });
+      return;
+    }
+    s.st.p = s.st.p.map((v) => Math.round(v * 10) / 10);
+    const cur = this.meta && this.meta.modifiedTime;
+    const e2 = this.inkPages[n] || (this.inkPages[n] = { v: cur, s: [] });
+    // (writing from an older version of the note on the same page keeps that version: it may still
+    // move to another page when the newer version's pages are lined up, this stroke won't)
+    if (!e2.s.length) e2.v = cur; else if (e2.v !== cur) s.st.v = cur;
+    e2.s.push(s.st);
+    s.path.setAttribute('d', pathD(s.st.p));
+    this.pushInkOp({ op: 'add', n, st: s.st });
+  }
+
+  /** A stroke stopped (a second finger came: that's a pinch), or the eraser let go. */
+  cancelStroke() {
+    const s = this.stroke;
+    if (!s) return;
+    this.stroke = null;
+    if (s.erase) { if (s.erase.length) this.pushInkOp({ op: 'erase', n: s.p.i + 1, items: s.erase }); return; }
+    if (s.path) s.path.remove();
+  }
+
+  eraseAt(s, pt) {
+    const n = s.p.i + 1;
+    const e = this.inkPages[n];
+    if (!e || !e.s.length) return;
+    const rad = 12 * s.unit; // 12 screen pixels around the finger or pen
+    let hit = false;
+    for (let k = e.s.length - 1; k >= 0; k--) {
+      if (strokeHits(e.s[k], pt.x, pt.y, rad)) { s.erase.push({ st: e.s[k], at: k }); e.s.splice(k, 1); hit = true; }
+    }
+    if (hit) this.renderInk(s.p.i);
+  }
+
+  pushInkOp(op) {
+    this.inkUndo.push(op);
+    if (this.inkUndo.length > 200) this.inkUndo.shift();
+    this.inkRedo = [];
+    this.inkChanged(op.n);
+  }
+
+  inkChanged(n) {
+    this.inkRev = (this.inkRev || 0) + 1;
+    if (this.thumbCache) this.thumbCache.delete(n);
+    this.updateInkBar();
+    clearTimeout(this.inkTimer);
+    this.inkTimer = setTimeout(() => this.flushInk(), 600);
+  }
+
+  /** Undo (back = true) or redo the last change. */
+  inkStep(back) {
+    if (this.stroke) return;
+    const op = (back ? this.inkUndo : this.inkRedo).pop();
+    if (!op) return;
+    const e = this.inkPages[op.n] || (this.inkPages[op.n] = { v: this.meta && this.meta.modifiedTime, s: [] });
+    const remove = (op.op === 'add') === back; // undoing an addition, or redoing an erasure
+    if (op.op === 'add') {
+      if (remove) { const k = e.s.indexOf(op.st); if (k >= 0) e.s.splice(k, 1); } else e.s.push(op.st);
+    } else if (remove) {
+      for (const it of op.items) { const k = e.s.indexOf(it.st); if (k >= 0) e.s.splice(k, 1); }
+    } else {
+      for (let j = op.items.length - 1; j >= 0; j--) e.s.splice(Math.min(op.items[j].at, e.s.length), 0, op.items[j].st);
+    }
+    (back ? this.inkRedo : this.inkUndo).push(op);
+    this.renderInk(op.n - 1);
+    this.inkChanged(op.n);
+    // Show where it happened.
+    if (op.n - 1 < this.first || op.n - 1 > this.last) this.goToPage(op.n - 1);
+  }
+
+  /** Save now (a pending save, or when leaving the note). `now`: the page is going away. */
+  flushInk({ now = false } = {}) {
+    clearTimeout(this.inkTimer);
+    this.inkTimer = 0;
+    const id = this.meta && this.meta.id;
+    if (!id || !this.inkPages) return this.inkSaving || Promise.resolve();
+    const snap = () => {
+      const out = {};
+      for (const [n, e] of Object.entries(this.inkPages)) out[n] = { v: e.v, s: e.s.slice() };
+      return out;
+    };
+    // The page going away cuts off a database save under way (this one or an earlier one): keep a
+    // copy at once whenever this note's writing changed since it was opened.
+    const lost = (this.inkLost || []).slice();
+    const gen = this.inkGen;
+    if (now && this.inkRev > 0) journalInk(id, snap(), lost, nextToken(), gen);
+    if (this.inkRev === this.inkSavedRev) return this.inkSaving || Promise.resolve(true);
+    const snapshot = snap();
+    const token = nextToken();
+    this.inkSavedRev = this.inkRev;
+    const prev = this.inkSaving || Promise.resolve();
+    // Resolves to whether it was saved (not after "delete all writing", not on a failure).
+    this.inkSaving = prev.catch(() => {}).then(() => saveInk(id, snapshot, lost, token, gen)).catch((err) => {
+      console.warn('ink save failed', err);
+      this.inkSavedRev = -1; // tried again with the next change or when leaving the note
+      toast(t('inkSaveFailed'), { duration: 6000 });
+      return false;
+    });
+    return this.inkSaving;
+  }
+
+  /** Colour, width and how fingers work: a small sheet. */
+  openInkStyle() {
+    const tl = this.inkTool();
+    const hl = tl.draw === 'hl';
+    const colors = hl ? HL_COLORS : PEN_COLORS;
+    const NAME = hl ? HL_NAMES : PEN_NAMES;
+    // A toast over the sheet would cover (and catch taps meant for) its switch.
+    const tst = document.getElementById('toast');
+    if (tst) tst.classList.remove('show');
+    const html = `
+      <div class="asheet xsheet inksheet" role="dialog" aria-labelledby="inkst-t">
+        <div class="asheet-head"><b id="inkst-t">${esc(t('inkStyle'))}</b><small>${esc(t(hl ? 'inkHighlighter' : 'inkPen'))}</small></div>
+        <div class="xrow"><span class="xlabel" id="inkst-c">${esc(t('inkColor'))}<small class="inkst-name"></small></span>
+          <div class="swatches" role="group" aria-labelledby="inkst-c">${Object.entries(colors).map(([k, v]) => `<button data-c="${k}" aria-pressed="${k === tl.c}" aria-label="${esc(t(NAME[k]))}" style="--sw:${v}"></button>`).join('')}</div>
+        </div>
+        <div class="xrow"><span class="xlabel">${esc(t('inkWidth'))}</span>
+          <div class="seg" data-x="size"><button data-v="0">${esc(t('inkThin'))}</button><button data-v="1">${esc(t('inkThick'))}</button></div>
+        </div>
+        <label class="xrow"><span class="xlabel">${esc(t('inkFinger'))}<small>${esc(t('inkFingerSub'))}</small></span><input type="checkbox" class="switch" data-x="finger"${this.fingerDraws() ? ' checked' : ''}></label>
+        <button class="xrow inkclear" data-x="clear"${this.inkOn(this.current + 1) ? '' : ' disabled'}><span class="xlabel">${esc(t('inkClearPage'))}</span></button>
+        <div class="xbtns"><button class="strong" data-x="done">${esc(t('done'))}</button></div>
+      </div>`;
+    const { wrap, close } = mountOverlay(html, 'ov-sheet');
+    const refresh = () => {
+      const cur = this.inkTool();
+      $$('.swatches button', wrap).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.c === cur.c)));
+      wrap.querySelector('.inkst-name').textContent = t(NAME[cur.c]);
+      $$('[data-x=size] button', wrap).forEach((b) => {
+        const on = +b.dataset.v === cur.size;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    };
+    refresh();
+    const key = hl ? 'h' : 'p';
+    $$('.swatches button', wrap).forEach((b) => {
+      b.onclick = () => { this.setInkTool({ [key + 'c']: b.dataset.c, tool: tl.draw }); refresh(); };
+    });
+    $$('[data-x=size] button', wrap).forEach((b) => {
+      b.onclick = () => { this.setInkTool({ [key + 's']: +b.dataset.v, tool: tl.draw }); refresh(); };
+    });
+    wrap.querySelector('[data-x=finger]').onchange = (ev) => saveSettings({ inkFinger: ev.target.checked ? 'on' : 'off' });
+    wrap.querySelector('[data-x=clear]').onclick = () => { close(); this.clearPageInk(this.current + 1); };
+    wrap.querySelector('[data-x=done]').onclick = close;
+    wrap.querySelector('.ov-backdrop').onclick = close;
+  }
+
+  async clearPageInk(n) {
+    const e = this.inkPages && this.inkPages[n];
+    if (!e || !e.s.length) return;
+    const ok = await dialog({ title: t('inkClearPage'), message: t('inkClearPageMsg', { n }), okText: t('inkEraseOk'), danger: true });
+    if (!ok || this.inkPages[n] !== e) return;
+    const items = e.s.map((st, at) => ({ st, at })).reverse();
+    e.s = [];
+    this.renderInk(n - 1);
+    this.pushInkOp({ op: 'erase', n, items });
+  }
+
+  /** Every note's handwriting was deleted (Settings). */
+  dropInk() {
+    this.cancelStroke();
+    this.inkGen = inkGeneration();
+    clearTimeout(this.inkTimer);
+    this.inkTimer = 0;
+    if (!this.inkPages) return;
+    this.inkPages = {};
+    this.inkLost = [];
+    this.inkUndo = [];
+    this.inkRedo = [];
+    this.inkSavedRev = this.inkRev; // (nothing left to save)
+    for (const el of $$('svg.ink', this.pagesEl)) el.remove();
+    if (this.thumbCache) this.thumbCache.clear();
+    this.updateInkBar();
+  }
+
+  /**
+   * A newer version of the note: handwriting written on the version before follows its page
+   * (`follow`: for each old page index, {to, changed} or null; see pagediff.followPages). Writing on
+   * an edited page goes along and the reader is told; writing on a page taken out is kept aside
+   * (not shown, deleted with all writing).
+   */
+  async remapInk(meta, prevVersion, follow, gen) {
+    if (gen === this.gen && this.inkLoading) await this.inkLoading.catch(() => {});
+    let live = gen === this.gen && this.meta && this.meta.id === meta.id && this.inkPages;
+    let pages;
+    let lost;
+    if (live) {
+      await this.flushInk();
+      live = gen === this.gen && this.inkPages;
+      pages = this.inkPages;
+      lost = this.inkLost || [];
+    }
+    if (!live) {
+      // (the note isn't open, or was closed meanwhile: its saves come first in the queue)
+      const rec = await loadInk(meta.id);
+      pages = rec.pages;
+      lost = rec.lost;
+    }
+    const old = (e, st) => (st.v != null ? st.v : e.v) === prevVersion;
+    if (!Object.values(pages).some((e) => e && e.s && e.s.some((st) => old(e, st)))) return; // nothing written on it
+    if (typeof follow === 'function') follow = follow();
+    const now = meta.modifiedTime;
+    const lists = {};
+    const edited = new Set();
+    const gone = {};
+    let touched = false;
+    for (const [key, e] of Object.entries(pages)) {
+      if (!e || !e.s || !e.s.length) continue;
+      const n0 = +key;
+      for (const st of e.s) {
+        let n = n0;
+        let v = st.v != null ? st.v : e.v;
+        if (v === prevVersion) {
+          touched = true;
+          const f = follow[n0 - 1];
+          if (f === null) { (gone[n0] || (gone[n0] = [])).push(st); continue; }
+          if (f) { n = f.to + 1; v = now; if (f.changed) edited.add(n); }
+        }
+        (lists[n] || (lists[n] = [])).push({ st, v });
+      }
+    }
+    if (!touched) return;
+    // Back to pages: a page's version is the current one when any of its writing is; writing of
+    // another version keeps its own.
+    const out = {};
+    for (const [n, list] of Object.entries(lists)) {
+      const pv = list.some((x) => x.v === now) ? now : list[0].v;
+      out[n] = {
+        v: pv,
+        s: list.map(({ st, v }) => {
+          const c = { ...st };
+          if (v === pv) delete c.v; else c.v = v;
+          return c;
+        }),
+      };
+    }
+    const lostOut = [...lost, ...Object.entries(gone).map(([n, st]) => ({ n: +n, v: prevVersion, s: st }))];
+    if (live && (gen !== this.gen || this.inkPages !== pages)) return this.remapInk(meta, prevVersion, () => follow, -1); // closed meanwhile: on what is stored
+    if (live) {
+      this.cancelStroke(); // (a stroke under way would be drawn over pages that moved)
+      this.inkLost = lostOut;
+      this.inkPages = out;
+      this.inkUndo = [];
+      this.inkRedo = [];
+      for (const el of $$('svg.ink', this.pagesEl)) el.remove();
+      for (const n of Object.keys(out)) this.renderInk(+n - 1);
+      if (this.thumbCache) this.thumbCache.clear();
+      this.inkRev = (this.inkRev || 0) + 1;
+      await this.flushInk();
+    } else {
+      // (the note open again meanwhile reads it after this save: loadInk waits in the same queue)
+      await saveInk(meta.id, out, lostOut, null, inkGeneration()).catch(() => {});
+    }
+    if (!live) return;
+    const nGone = Object.keys(gone).length;
+    const msgs = [];
+    if (edited.size) msgs.push(t('inkPagesChanged', { range: pageRanges([...edited].sort((a, b) => a - b)) }));
+    if (nGone) msgs.push(t('inkPagesRemoved', { n: nGone }));
+    if (msgs.length) toast(msgs.join(' '), { duration: 9000 });
+  }
+
   loadChanged(meta) {
     const c = docState(meta.id).changed;
     this.changed = c && c.version === meta.modifiedTime && Array.isArray(c.pages) ? new Set(c.pages) : null;
@@ -1837,7 +2383,13 @@ export class Viewer {
     try { rec = await idb.get('texts', key); } catch { /* none */ }
     if (rec && rec.tag !== FP_TAG) rec = null; // made another way: start again
     const mine = rec && rec.version === meta.modifiedTime;
-    if (mine && rec.done !== false) return; // this version is known
+    if (mine && rec.done !== false) {
+      // This version is known. Writing left on the version before (its move cut short) goes now.
+      if (rec.prev && Array.isArray(rec.prev.fp) && Array.isArray(rec.fp) && hasInk(meta.id)) {
+        this.remapInk(meta, rec.prev.version, () => followPages(rec.prev.fp, rec.fp), gen).catch((err) => console.warn('ink remap', err));
+      }
+      return;
+    }
     let prev = null;
     if (mine) prev = rec.prev || null;
     else if (rec && rec.done !== false) prev = { version: rec.version, fp: rec.fp };
@@ -1852,7 +2404,7 @@ export class Viewer {
     const n = Math.min(this.doc ? this.doc.numPages : 0, 1500);
     // Not after the note's stored data was deleted meanwhile (that would bring it back).
     const save = (done) => cache.epoch !== epoch ? Promise.resolve() : idb.put('texts', key, done
-      ? { tag: FP_TAG, version: meta.modifiedTime, fp: fps, done: true }
+      ? { tag: FP_TAG, version: meta.modifiedTime, fp: fps, done: true, prev: prev && Array.isArray(prev.fp) ? prev : null }
       : { tag: FP_TAG, version: meta.modifiedTime, fp: fps, done: false, prev }).catch(() => {});
     const t0 = performance.now();
     for (let i = fps.length; i < n; i++) {
@@ -1872,6 +2424,10 @@ export class Viewer {
     await save(true);
     if (!prev || !Array.isArray(prev.fp)) return; // first time: nothing to compare
     const pages = changedPages(prev.fp, fps);
+    // Handwriting on the version before follows its pages.
+    if (hasInk(meta.id) || (this.inkPages && gen === this.gen && Object.keys(this.inkPages).length)) {
+      this.remapInk(meta, prev.version, () => followPages(prev.fp, fps), gen).catch((err) => console.warn('ink remap', err));
+    }
     updateDocState(meta.id, { changed: { version: meta.modifiedTime, pages } });
     if (gen !== this.gen || !pages.length) return;
     this.changed = new Set(pages);
@@ -1912,11 +2468,31 @@ export class Viewer {
     for (const el of $$('.chg-tag', this.pagesEl)) el.remove();
   }
 
-  async savePdf() {
-    if (!this.blob) return;
+  async savePdf(withInk = null) {
+    if (!this.blob || !this.doc) return;
     if (this.restricted()) { toast(t('restrictedDoc'), { duration: 6000 }); return; }
+    const nums = Array.from({ length: this.doc.numPages }, (_, i) => i + 1);
+    if (withInk == null && nums.some((n) => this.inkOn(n))) {
+      // Written on: ask whether the writing goes into the saved file.
+      actionSheet({
+        title: t('savePdf'),
+        items: [
+          { label: t('savePdfWithInk'), icon: 'pen', onClick: () => this.savePdf(true) },
+          { label: t('savePdfOriginal'), icon: 'download', onClick: () => this.savePdf(false) },
+        ],
+      });
+      return;
+    }
+    const src = { blob: this.blob, doc: this.doc };
     const name = safeFileName(this.meta.name) + '.pdf';
-    const ok = await saveFile(this.blob, name);
+    let ok = false;
+    try {
+      const inkMap = withInk ? await this.inkForExport(nums, src) : null;
+      const blob = inkMap ? await inkIntoWholePdf(src.blob, (n) => inkMap.get(n)) : src.blob;
+      ok = await saveFile(blob, name);
+    } catch (e) {
+      console.error(e);
+    }
     toast(ok ? t('savedToDownloads', { name }) : t('saveFailed'));
   }
 }

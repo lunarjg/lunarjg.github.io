@@ -38,7 +38,7 @@
 
   <section>
     <h2>어떤 앱인가요?</h2>
-    <p>노트 뷰어는 노트 앱이 Google 드라이브에 자동으로 백업한 PDF 노트를 휴대폰(Android)에서 노트북처럼 읽는 <b>읽기 전용</b> 뷰어입니다.</p>
+    <p>노트 뷰어는 노트 앱이 Google 드라이브에 자동으로 백업한 PDF 노트를 휴대폰(Android 앱)이나 웹 브라우저에서 노트북처럼 읽는 뷰어입니다. 드라이브에는 <b>읽기 전용</b>으로만 접근합니다.</p>
     <ul>
       <li>노트 폴더를 한 번 연결하면 태블릿에서 고친 노트가 휴대폰에도 자동으로 나타납니다 (백그라운드 동기화, 업데이트 알림).</li>
       <li>이어 읽기, 탭으로 여러 노트 열기, 한 페이지씩 보기, 썸네일·책갈피·목차, 오프라인 열람</li>
@@ -51,6 +51,8 @@
       <li>네이버 MYBOX, Dropbox, WebDAV(Nextcloud·Synology·pCloud 등)도 연결 (읽기 전용, Android 앱)</li>
       <li>Word 문서(.docx)와 한글 문서(.hwp·.hwpx)도 휴대폰 안에서 PDF로 바꿔 보기 (문서는 어디로도 보내지 않음)</li>
       <li>필요한 페이지만 골라 PDF·이미지(ZIP)로 저장</li>
+      <li>페이지 위에 펜·형광펜으로 필기 (이 기기에만 저장, 원본 노트는 바뀌지 않음)</li>
+      <li><a href="app/">웹 버전</a>: 설치 없이 브라우저에서 Google 드라이브 노트 보기</li>
     </ul>
   </section>
 
@@ -61,6 +63,7 @@
       <li>노트 폴더를 추천하고 새 노트를 찾기 위해 드라이브의 다른 위치에 있는 PDF·폴더의 이름과 위치, 수정 시각도 읽지만, 기기 안에서만 처리하고 저장하지 않습니다.</li>
       <li>읽은 PDF는 휴대폰 안에서만 화면에 표시하고 오프라인용으로 저장합니다. Word·한글 문서는 휴대폰 안에서 PDF로 바꿔 보여 주며 어디로도 보내지 않습니다. <b>개발자 서버가 없으며</b>, 노트와 Google 드라이브 데이터는 개발자나 제3자에게 전송되지 않습니다. 광고와 추적 도구도 없습니다.</li>
       <li>계정 이메일과 이름은 어느 계정이 연결됐는지 설정 화면에 보여 주는 데만 씁니다.</li>
+      <li>웹 버전도 같은 권한(drive.readonly)만 쓰며, 약 1시간짜리 접근 토큰과 노트·필기는 그 브라우저에만 저장됩니다(갱신 토큰 없음, 서버 없음).</li>
       <li>OneDrive를 연결하면 앱이 Microsoft 계정 로그인(휴대폰 브라우저)과 파일 읽기 권한(<code>Files.Read</code>, <code>User.Read</code>, <code>offline_access</code>)으로 고른 OneDrive 폴더의 PDF·Word·한글 문서를 읽습니다. 데이터는 Microsoft와 휴대폰 사이에서만 오가며, Google 데이터는 Microsoft로 보내지 않습니다. <b>설정 → 다른 클라우드 → 연결 해제</b>로 기기 안의 데이터를 지우고, <a href="https://account.live.com/consent/Manage">Microsoft 계정의 앱 및 서비스</a>에서 권한을 없앨 수 있습니다.</li>
       <li>Dropbox(읽기 전용 권한 files.metadata.read·files.content.read·account_info.read), 네이버 MYBOX(사용자가 만든 개인 액세스 토큰), WebDAV 서버(사용자가 입력한 주소·사용자 이름·비밀번호)를 연결하면 앱이 그 서버와 직접 통신해 고른 폴더의 PDF·Word·한글 문서를 읽기만 합니다. Google 데이터는 이 서비스들로 보내지 않습니다.</li>
       <li>GitHub 저장소를 추가하면 앱이 GitHub 서버에 직접 요청합니다(로그인 없음). GitHub는 일반 웹 요청처럼 IP 주소, 기기 종류 같은 일반 요청 정보, 요청한 저장소 주소를 받습니다.</li>
@@ -86,7 +89,7 @@
 
   <section>
     <h2>What is it?</h2>
-    <p>Note Viewer is a <b>read-only</b> Android app for reading, like a notebook, the PDF notes that your note-taking app automatically backs up to Google Drive.</p>
+    <p>Note Viewer is an Android app (also in a web browser) for reading, like a notebook, the PDF notes that your note-taking app automatically backs up to Google Drive, with <b>read-only</b> access to your Drive.</p>
     <ul>
       <li>Connect your notes folder once, and notes you edit on your tablet appear on your phone automatically (background sync with update notifications).</li>
       <li>Continue reading, notes in tabs, one page at a time, thumbnails, bookmarks, outline, offline reading</li>
@@ -99,6 +102,8 @@
       <li>NAVER MYBOX, Dropbox and WebDAV (Nextcloud, Synology, pCloud…) too (read only, Android app)</li>
       <li>Word (.docx) and Hancom Hangul (.hwp, .hwpx) documents too, turned into PDFs on your phone (documents are never uploaded)</li>
       <li>Export just the pages you need as a PDF or images (ZIP)</li>
+      <li>Write on pages with a pen or highlighter (kept on this device; the note never changes)</li>
+      <li><a href="app/">Web version</a>: read your Google Drive notes in a browser, no install</li>
     </ul>
   </section>
 
@@ -109,6 +114,7 @@
       <li>To suggest a notes folder and detect new notes, it also reads the names, locations and modification times of PDFs and folders elsewhere in your Drive; this is processed on the device only and not stored.</li>
       <li>The PDFs are displayed and stored for offline reading only on your phone; Word and Hangul documents are converted to PDF on the phone and never uploaded. <b>There is no developer server</b>; your notes and Google Drive data are never sent to the developer or any third party. No ads or tracking.</li>
       <li>The account email and name are used only to show which account is connected in Settings.</li>
+      <li>The web version uses the same drive.readonly access only; a roughly one-hour access token, your notes and your writing stay in that browser (no refresh token, no server).</li>
       <li>If you connect OneDrive, the app signs in with your Microsoft account (in your phone's browser) and reads the PDFs, Word and Hangul documents in the OneDrive folders you choose with read-only file access (<code>Files.Read</code>, <code>User.Read</code>, <code>offline_access</code>). Data only travels between Microsoft and your phone; Google data is never sent to Microsoft. <b>Settings → Other clouds → Disconnect</b> deletes it from the phone, and you can remove the access under <a href="https://account.live.com/consent/Manage">Apps and services in your Microsoft account</a>.</li>
       <li>If you connect Dropbox (read-only scopes files.metadata.read, files.content.read, account_info.read), NAVER MYBOX (a personal access token you create) or a WebDAV server (address, user name and password you enter), the app talks directly with that server and only reads the PDFs, Word and Hangul documents in the folders you choose. Google data is never sent to these services.</li>
       <li>If you add GitHub repositories, the app requests them directly from GitHub's servers (no sign-in); like any web request, GitHub receives your IP address, standard request information such as the device type, and the repository addresses requested.</li>
