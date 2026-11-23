@@ -24,6 +24,7 @@ const M = {
   close: ['닫기', 'Close', '閉じる', '关闭', 'Cerrar'],
   done: ['완료', 'Done', '完了', '完成', 'Listo'],
   select: ['선택', 'Select', '選択', '选择', 'Seleccionar'],
+  selectTip: ['선택 (Shift 또는 Ctrl을 누른 채 노트를 클릭해도 됩니다)', 'Select (or Shift-click or Ctrl-click notes)', '選択（Shift または Ctrl を押しながらノートをクリックしても選べます）', '选择（也可按住 Shift 或 Ctrl 点击笔记）', 'Seleccionar (o haz clic con Mayús o Ctrl en las notas)'],
   delete: ['삭제', 'Delete', '削除', '删除', 'Eliminar'],
   restore: ['복구', 'Restore', '復元', '恢复', 'Restaurar'],
   copy: ['복사', 'Copy', 'コピー', '复制', 'Copiar'],

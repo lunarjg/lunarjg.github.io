@@ -1,5 +1,5 @@
 // Offline support: app shell and PDF.js are cached; Google APIs always go to the network.
-const VERSION = 'gnv-1.28.0';
+const VERSION = 'gnv-1.28.1';
 const SHELL = [
   './',
   'index.html',

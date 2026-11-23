@@ -1798,7 +1798,7 @@ function docCell(f, { showPath = false, variant = '' } = {}) {
   const pct = st.lastPage && st.pages ? Math.min(100, Math.round((st.lastPage / st.pages) * 100)) : 0;
   const meta = variant === 'resume' && st.lastPage && st.pages ? t('resumeMeta', { p: st.lastPage, n: st.pages, ago: fmtAgo(st.lastOpened) }) : (path || fmtDate(f.modifiedTime));
   return `<div class="item doc ${selected.has(f.id) ? 'sel' : ''}" data-id="${esc(f.id)}">
-    <a class="thumb" href="#/doc/${encodeURIComponent(f.id)}" data-open aria-label="${esc(f.name)}${converted(f) ? ', ' + formatTag(f.fmt) : ''}${cache.restricted(f.id) ? ', ' + esc(t('readOnlyTag')) : ''}">
+    <a class="thumb" href="#/doc/${encodeURIComponent(f.id)}" data-open${selecting && !variant ? ` role="checkbox" aria-checked="${selected.has(f.id)}"` : ''} aria-label="${esc(f.name)}${converted(f) ? ', ' + formatTag(f.fmt) : ''}${cache.restricted(f.id) ? ', ' + esc(t('readOnlyTag')) : ''}">
       <span class="selmark">${icon('check')}</span>
       <div class="cover" style="--c:${coverColor(f.name)}">
         <img alt="" decoding="async">
@@ -1847,27 +1847,59 @@ function libActions() {
   if (selecting) return `<button class="textbtn strong" data-a="selectdone">${t('done')}</button>`;
   return `
     <button class="chip syncline" data-a="sync" aria-label="${t('syncNow')}">${statusLine()}</button>
-    <button class="ibtn" data-a="select" aria-label="${t('select')}" title="${t('select')}">${icon('checkCircle')}</button>
+    <button class="ibtn" data-a="select" aria-label="${t('select')}" title="${t('selectTip')}">${icon('checkCircle')}</button>
     <button class="ibtn" data-a="viewmenu" aria-label="${t('viewOptions')}">${icon('more')}</button>`;
 }
 
 // ---------------------------------------------------------------------- selection mode (선택)
 let selecting = false;
 const selected = new Set();
+const IS_MAC = /Mac/.test(navigator.platform || '') && !/iPhone|iPad/.test(navigator.userAgent);
+
+/** Where the selection count is said to screen readers (in place before anything is said). */
+function selStatus() {
+  let status = $('#selstatus');
+  if (!status) {
+    status = document.createElement('span');
+    status.id = 'selstatus';
+    status.className = 'sr-only';
+    status.setAttribute('role', 'status');
+    $('#app').appendChild(status);
+  }
+  return status;
+}
+selStatus();
 
 function setSelecting(on, firstId) {
+  const act = document.activeElement;
+  const fid = act && act.closest && act.closest('.item.doc') ? act.closest('.item.doc').dataset.id : null;
+  const btn = act && act.closest && act.closest('[data-a="select"], [data-a="selectdone"], #selbar');
   selecting = on;
   selected.clear();
   if (on && firstId) selected.add(firstId);
   document.body.classList.toggle('selecting', on);
   render({ keepScroll: true });
   renderSelbar();
+  // Keyboard users stay where they were: on the note, or on the button that replaced the one used.
+  const back = fid ? main.querySelector(`.item.doc[data-id="${CSS.escape(fid)}"] .thumb`)
+    : btn ? main.querySelector(on ? '[data-a="selectdone"]' : '[data-a="select"]') : null;
+  if (back) back.focus({ preventScroll: true });
 }
 
 function toggleSelected(id) {
   if (selected.has(id)) selected.delete(id); else selected.add(id);
-  $$('.item.doc', main).forEach((el) => el.classList.toggle('sel', selected.has(el.dataset.id)));
+  markSelected();
   renderSelbar();
+}
+
+/** The cells show (and tell screen readers) whether they are selected. */
+function markSelected() {
+  $$('.item.doc', main).forEach((el) => {
+    const on = selected.has(el.dataset.id);
+    el.classList.toggle('sel', on);
+    const a = el.querySelector('.thumb');
+    if (a && selecting) a.setAttribute('aria-checked', String(on));
+  });
 }
 
 function renderSelbar() {
@@ -1880,6 +1912,9 @@ function renderSelbar() {
     bar.addEventListener('click', onSelbarClick);
   }
   bar.hidden = !selecting;
+  const status = selStatus();
+  const said = selecting ? (selected.size ? t('nSelected', { n: selected.size }) : t('selectItems')) : '';
+  if (status.textContent !== said) status.textContent = said;
   if (!selecting) return;
   const n = selected.size;
   const docsInView = $$('.item.doc', main).length;
@@ -1901,7 +1936,7 @@ function onSelbarClick(e) {
     const all = selected.size === ids.length;
     selected.clear();
     if (!all) ids.forEach((id) => selected.add(id));
-    $$('.item.doc', main).forEach((el) => el.classList.toggle('sel', !all));
+    markSelected();
     renderSelbar();
   } else if (act === 'fav') {
     const files = allFiles();
@@ -3281,7 +3316,25 @@ let suppressClick = false;
 document.addEventListener('click', (e) => {
   if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); }
 }, true);
+// (the long-press's own finger went down before; a new one is a new tap, never swallowed)
+document.addEventListener('pointerdown', () => { suppressClick = false; }, true);
 document.addEventListener('click', (e) => {
+  // Keyboard and mouse (web, Chromebook): Shift- (or Ctrl-/⌘-) click a note to select it, as a
+  // long-press does; more such clicks add or remove notes.
+  const modClick = e.shiftKey || e.metaKey || (e.ctrlKey && !IS_MAC);
+  if (modClick && main.contains(e.target) && currentRoute && currentRoute.tab === 'docs' && !e.target.closest('[data-menu]')) {
+    const item = e.target.closest('.item.doc');
+    // (the shelves at the top — continue reading, updated, favourites — hide while selecting:
+    // a note clicked there opens as usual)
+    if (item && !item.closest('[data-variant]')) {
+      e.preventDefault();
+      if (selecting) toggleSelected(item.dataset.id); else setSelecting(true, item.dataset.id);
+      return;
+    }
+  }
+  // A folder opens here, not in a new browser window or tab (any tab of the app).
+  const modFolder = modClick && main.contains(e.target) && e.target.closest('a.item.folder');
+  if (modFolder) { e.preventDefault(); location.hash = modFolder.getAttribute('href'); return; }
   if (selecting && main.contains(e.target)) {
     const item = e.target.closest('.item.doc'); // folders aren't selectable: their link opens them
     if (item) {
@@ -3414,19 +3467,31 @@ main.addEventListener('touchmove', (e) => {
   });
 }, { passive: true }));
 
+// (Shift-click would also select the text between two clicks: not on note cells.)
+main.addEventListener('mousedown', (e) => {
+  if ((e.shiftKey || e.ctrlKey || e.metaKey) && e.target.closest('.item.doc')) e.preventDefault();
+});
+
 // Long-press an item: select it (문서 tab) or show its menu (elsewhere).
 let pressTimer = null;
 let pressStart = null;
-function onLongPress(item) {
-  suppressClick = true;
-  setTimeout(() => { suppressClick = false; }, 700);
-  if (navigator.vibrate) navigator.vibrate(12);
+let touchLongPressAt = 0; // when a touch's long-press last ran (its contextmenu may follow)
+function onLongPress(item, { touch = true } = {}) {
+  // (a finger lifted after a long-press makes a click that must not reach anything; a mouse's
+  // right-click or a Mac's Ctrl-click makes none, so the next click goes through)
+  if (touch) {
+    touchLongPressAt = Date.now();
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 700);
+    if (navigator.vibrate) navigator.vibrate(12);
+  }
   if (item.dataset.fid) {
     if (!selecting) folderMenu(item.dataset.fid);
     return;
   }
   const id = item.dataset.id;
   if (item.closest('[data-variant="resume"]') && !selecting) resumeMenu(id);
+  else if (item.closest('[data-variant]')) itemMenu(id);
   else if (currentRoute.tab === 'docs') {
     if (selecting) toggleSelected(id); else setSelecting(true, id);
   } else itemMenu(id);
@@ -3444,12 +3509,19 @@ main.addEventListener('touchmove', (e) => {
   const t = e.touches[0];
   if (Math.hypot(t.clientX - pressStart.x, t.clientY - pressStart.y) > 10) { clearTimeout(pressTimer); pressTimer = null; }
 }, { passive: true });
-['touchend', 'touchcancel'].forEach((ev) => main.addEventListener(ev, () => { clearTimeout(pressTimer); pressTimer = null; }, { passive: true }));
+// (on the document: the touched cell may be redrawn away before the finger lifts)
+['touchend', 'touchcancel'].forEach((ev) => document.addEventListener(ev, () => { clearTimeout(pressTimer); pressTimer = null; }, { passive: true }));
 main.addEventListener('contextmenu', (e) => {
   const item = e.target.closest('.item');
   if (!item) return;
   e.preventDefault();
-  if (!suppressClick) onLongPress(item); // desktop right-click (touch long-press already handled)
+  // Where it came from: a finger (the browser's own long-press) or a mouse / keyboard menu key.
+  // (a press under way with nothing said about the source: a browser that doesn't say is a touch's too)
+  const fromTouch = e.pointerType === 'touch' || !!(e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) || (!!pressTimer && !e.pointerType);
+  if (!fromTouch) { onLongPress(item, { touch: false }); return; } // right-click, a Mac's Ctrl-click, the menu key
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; onLongPress(item); return; } // the touch's long-press, sooner
+  if (Date.now() - touchLongPressAt < 1500) return; // that long-press already ran
+  onLongPress(item);
 });
 
 $('#filepick').addEventListener('change', (e) => {
@@ -3704,7 +3776,12 @@ tabstrip.addEventListener('keydown', (e) => { // keyboard: Enter/Space on a tab 
 });
 // Escape closes the top dialog/sheet (the viewer handles its own keys when nothing is on top).
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && $('#overlay .ov')) { e.preventDefault(); window.__gnvBack(); }
+  if (e.key === 'Escape' && $('#overlay .ov')) { e.preventDefault(); window.__gnvBack(); return; }
+  if (e.key === 'Escape' && selecting && !viewer.isOpen) { e.preventDefault(); setSelecting(false); return; }
+  if (e.key === ' ' && selecting && e.target.matches && e.target.matches('.item.doc .thumb') && main.contains(e.target)) {
+    e.preventDefault(); // (no scrolling)
+    if (!e.repeat) e.target.click(); // once per press, not again while held
+  }
 });
 
 // Reorder: long-press (touch) or drag (mouse) a tab; it follows the finger between its neighbours.
