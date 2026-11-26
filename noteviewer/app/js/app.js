@@ -1673,6 +1673,8 @@ function onRoute() {
   const same = currentRoute && routeKey(currentRoute) === routeKey(r);
   if (selecting && !same) {
     selected.clear();
+    selAnchor = null; // (a Shift-click range starts over in the new place)
+    rangeBase = null;
     // Opening a folder while selecting keeps selection mode on (select notes inside it).
     if (r.tab !== 'docs') { selecting = false; document.body.classList.remove('selecting'); }
     renderSelbar();
@@ -1694,6 +1696,17 @@ function render({ keepScroll = false } = {}) {
   hydrateIcons(main);
   renderTabs();
   if (keepScroll) main.scrollTop = top;
+  if (selecting && r.tab === 'docs') pruneSelection();
+}
+
+/** Notes no longer shown here (moved or removed by a sync) leave the selection and its range. */
+function pruneSelection() {
+  const shown = new Set(selectableIds());
+  let gone = false;
+  for (const id of [...selected]) if (!shown.has(id)) { selected.delete(id); gone = true; }
+  if (rangeBase) for (const id of [...rangeBase]) if (!shown.has(id)) rangeBase.delete(id);
+  if (selAnchor != null && !shown.has(selAnchor)) { selAnchor = null; rangeBase = null; }
+  if (gone) { markSelected(); renderSelbar(); }
 }
 
 // ====================================================================== library screens
@@ -1847,13 +1860,18 @@ function libActions() {
   if (selecting) return `<button class="textbtn strong" data-a="selectdone">${t('done')}</button>`;
   return `
     <button class="chip syncline" data-a="sync" aria-label="${t('syncNow')}">${statusLine()}</button>
-    <button class="ibtn" data-a="select" aria-label="${t('select')}" title="${t('selectTip')}">${icon('checkCircle')}</button>
+    <button class="ibtn" data-a="select" aria-label="${t('select')}" title="${t('selectTip', { mod: IS_MAC ? '⌘' : 'Ctrl' })}">${icon('checkCircle')}</button>
     <button class="ibtn" data-a="viewmenu" aria-label="${t('viewOptions')}">${icon('more')}</button>`;
 }
 
 // ---------------------------------------------------------------------- selection mode (선택)
 let selecting = false;
 const selected = new Set();
+// Shift-click selects every note from the anchor (the note last picked on its own) to the one
+// clicked; rangeBase is what was selected before that run of Shift-clicks (they replace each
+// other's range, as in a file manager).
+let selAnchor = null;
+let rangeBase = null;
 const IS_MAC = /Mac/.test(navigator.platform || '') && !/iPhone|iPad/.test(navigator.userAgent);
 
 /** Where the selection count is said to screen readers (in place before anything is said). */
@@ -1877,6 +1895,8 @@ function setSelecting(on, firstId) {
   selecting = on;
   selected.clear();
   if (on && firstId) selected.add(firstId);
+  selAnchor = on && firstId ? firstId : null;
+  rangeBase = null;
   document.body.classList.toggle('selecting', on);
   render({ keepScroll: true });
   renderSelbar();
@@ -1888,8 +1908,41 @@ function setSelecting(on, firstId) {
 
 function toggleSelected(id) {
   if (selected.has(id)) selected.delete(id); else selected.add(id);
+  selAnchor = id;
+  rangeBase = null;
   markSelected();
   renderSelbar();
+}
+
+/** The notes that can be selected here, in the order shown (not the shelves at the top). */
+function selectableIds() {
+  return $$('.item.doc', main).filter((el) => !el.closest('[data-variant]')).map((el) => el.dataset.id);
+}
+
+/** Shift-click: every note from the anchor to this one. */
+function selectRange(id) {
+  const ids = selectableIds();
+  const a = selAnchor == null ? -1 : ids.indexOf(selAnchor);
+  const b = ids.indexOf(id);
+  if (b < 0) return;
+  if (a < 0) { // no anchor in view (after "select all", say): this note starts the range, selected
+    selected.add(id);
+    selAnchor = id;
+    rangeBase = null;
+    markSelected();
+    renderSelbar();
+    return;
+  }
+  if (!rangeBase) rangeBase = new Set(selected);
+  selected.clear();
+  rangeBase.forEach((x) => selected.add(x));
+  for (let k = Math.min(a, b); k <= Math.max(a, b); k++) selected.add(ids[k]);
+  markSelected();
+  renderSelbar();
+  // Said in full: a new range can change which notes are selected without changing how many.
+  const nameOf = (x) => { const el = main.querySelector(`.item.doc[data-id="${CSS.escape(x)}"] .name span`); return el ? el.textContent : ''; };
+  const [from, to] = a <= b ? [ids[a], ids[b]] : [ids[b], ids[a]];
+  selStatus().textContent = t('selRange', { a: nameOf(from), b: nameOf(to), n: selected.size });
 }
 
 /** The cells show (and tell screen readers) whether they are selected. */
@@ -1936,6 +1989,8 @@ function onSelbarClick(e) {
     const all = selected.size === ids.length;
     selected.clear();
     if (!all) ids.forEach((id) => selected.add(id));
+    selAnchor = null;
+    rangeBase = null;
     markSelected();
     renderSelbar();
   } else if (act === 'fav') {
@@ -3320,7 +3375,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('pointerdown', () => { suppressClick = false; }, true);
 document.addEventListener('click', (e) => {
   // Keyboard and mouse (web, Chromebook): Shift- (or Ctrl-/⌘-) click a note to select it, as a
-  // long-press does; more such clicks add or remove notes.
+  // long-press does. Then Ctrl/⌘-click adds or removes one note, Shift-click a whole run of them.
   const modClick = e.shiftKey || e.metaKey || (e.ctrlKey && !IS_MAC);
   if (modClick && main.contains(e.target) && currentRoute && currentRoute.tab === 'docs' && !e.target.closest('[data-menu]')) {
     const item = e.target.closest('.item.doc');
@@ -3328,7 +3383,10 @@ document.addEventListener('click', (e) => {
     // a note clicked there opens as usual)
     if (item && !item.closest('[data-variant]')) {
       e.preventDefault();
-      if (selecting) toggleSelected(item.dataset.id); else setSelecting(true, item.dataset.id);
+      // Shift: everything from the note picked before to this one; Ctrl/⌘: this one on its own.
+      if (!selecting) setSelecting(true, item.dataset.id);
+      else if (e.shiftKey) selectRange(item.dataset.id);
+      else toggleSelected(item.dataset.id);
       return;
     }
   }
@@ -3780,7 +3838,12 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selecting && !viewer.isOpen) { e.preventDefault(); setSelecting(false); return; }
   if (e.key === ' ' && selecting && e.target.matches && e.target.matches('.item.doc .thumb') && main.contains(e.target)) {
     e.preventDefault(); // (no scrolling)
-    if (!e.repeat) e.target.click(); // once per press, not again while held
+    // once per press, not again while held; with Shift, a whole run as Shift+Enter does
+    if (!e.repeat) { if (e.shiftKey) selectRange(e.target.closest('.item.doc').dataset.id); else e.target.click(); }
+  } else if (e.key === ' ' && e.shiftKey && !selecting && !e.repeat && currentRoute && currentRoute.tab === 'docs' && e.target.matches
+    && e.target.matches('.item.doc .thumb') && main.contains(e.target) && !e.target.closest('[data-variant]')) {
+    e.preventDefault(); // Shift+Space starts selecting, as Shift+Enter and Shift-click do
+    setSelecting(true, e.target.closest('.item.doc').dataset.id);
   }
 });
 
