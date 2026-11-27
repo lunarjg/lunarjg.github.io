@@ -1637,6 +1637,7 @@ function parseRoute() {
   // Split first, then decode: an id may hold a "/" (WebDAV paths), encoded in the address.
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/').map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
   if (a === 'doc' && b) return { doc: b, page: parseInt(c, 10) || 0 };
+  if (a === 'preview') return { preview: true };
   if (a === 'fav') return { tab: 'fav' };
   if (a === 'search') return { tab: 'search' };
   if (a === 'settings') return { tab: 'settings' };
@@ -1656,9 +1657,18 @@ function onRoute() {
   const r = parseRoute();
   if (homeAfterBack) {
     homeAfterBack = false;
-    if (!r.doc && !(r.tab === 'docs' && r.folder === ROOT)) { go('#/docs', { replace: true }); return; }
+    if (r.doc || !(r.tab === 'docs' && r.folder === ROOT)) { go('#/docs', { replace: true }); return; }
   }
   activeTab = r.doc || null;
+  if (r.preview) {
+    // A file opened from another app, read before it is added (see openPreview).
+    if (!preview) { go('#/docs', { replace: true }); return; }
+    if (!currentRoute) { currentRoute = { tab: 'docs', folder: ROOT }; render(); }
+    renderTabs();
+    showPreview();
+    return;
+  }
+  preview = null; // (left the preview: the file goes, unless it was added)
   if (r.doc) {
     if (!currentRoute) { currentRoute = { tab: 'docs', folder: ROOT }; render(); }
     openDoc(r.doc, r.page);
@@ -1865,6 +1875,9 @@ function libActions() {
 }
 
 // ---------------------------------------------------------------------- selection mode (선택)
+// A file opened from another app, {pdf, name, fmt, meta}: read in the viewer at #/preview, kept
+// only when "Add to Note Viewer" is tapped (see openPreview).
+let preview = null;
 let selecting = false;
 const selected = new Set();
 // Shift-click selects every note from the anchor (the note last picked on its own) to the one
@@ -3151,61 +3164,87 @@ function viewMenu() {
 }
 
 // ====================================================================== import local PDFs
-async function importFiles(fileList) {
+/**
+ * A file from the phone ready to read: {pdf, name, fmt} (a Word or Hangul document turned into a
+ * PDF; fmt null for a PDF), or {oldHwp: name} for a Hangul file older than HWP 5.0, or null when
+ * it is no document the app reads. A failed conversion throws (`convert` set when it says why).
+ */
+async function prepareDoc(file) {
+  // What the file really is (a shared file may come without a type, a name or the right one).
+  let kind = await sniff(file);
+  if (!kind && (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name))) kind = 'pdf'; // (pdf.js reads a little junk before the header)
+  // a document to turn into a PDF: Hangul (HWPX), or a ZIP that is a Word file (by its name or
+  // type; a shared one may have neither)
+  const fmt = kind === 'hwpx' || kind === 'docx' ? zipFormat(kind, file.name, file.type) : kind === 'cfb' ? cfbFormat(file.name) : null;
+  const word = !!fmt && (fmt === 'hwpx' || fmt === 'hwp' || formatOf(file.name) === 'docx' || file.type === DOCX_TYPE || !OTHER_ZIP.test(file.name));
+  if (kind !== 'pdf' && !word) return kind === 'hwp3' ? { oldHwp: baseName(file.name) || file.name || '' } : null;
+  const name = baseName(file.name);
+  if (!word) return { pdf: file, name, fmt: null };
+  const say = (p) => toast(t('convertingNamePct', { name, pct: Math.round(p * 100) }), { duration: 10 * 60_000 });
+  let shown = -1;
+  say(0);
+  const pdf = await toPdf(file, { name, fmt }, { onProgress: (p) => { if (p - shown >= 0.05) { shown = p; say(p); } } });
+  return { pdf, name, fmt };
+}
+
+/** Keep a prepared document in the library (this phone's notes). The note's id, or null if dismissed. */
+async function storeDoc({ pdf, name, fmt }, { stillWanted = () => true } = {}) {
+  let modifiedTime = new Date(pdf.lastModified || Date.now()).toISOString();
+  // The same note again (e.g. a report re-exported after editing): offer to update it in place,
+  // which keeps its reading position, bookmarks and tab.
+  const same = Object.values(localFiles.get()).find((x) => x.name.toLowerCase() === name.toLowerCase());
+  const choice = same ? await askSameName(same.name) : 'keep';
+  if (choice === 'skip') return null; // dismissed: import nothing (not a silent duplicate)
+  if (!stillWanted()) return null; // (a preview that failed to open while the question was up)
+  const replace = choice === 'replace';
+  const id = replace ? same.id : 'local:' + Math.random().toString(36).slice(2, 10);
+  if (replace && modifiedTime <= same.modifiedTime) modifiedTime = new Date().toISOString(); // still a newer version
+  await cache.putPdf(id, pdf, modifiedTime);
+  // Re-read right before writing so concurrent imports don't overwrite each other.
+  const all = localFiles.get();
+  all[id] = { id, name: replace ? same.name : name, modifiedTime, size: pdf.size };
+  if (fmt) all[id].fmt = fmt; else delete all[id].fmt;
+  if (!localFiles.set(all)) {
+    // The library list couldn't be written (storage full): no half-added note left behind.
+    if (!replace) await cache.remove(id).catch(() => {});
+    const err = new Error('storage full');
+    err.name = 'QuotaExceededError';
+    throw err;
+  }
+  return { id, replaced: replace };
+}
+
+async function importFiles(fileList, { open = true } = {}) {
   let last = null;
   let replaced = 0;
   const failed = [];
   let failMsg = '';
   let oldHwp = ''; // (a Hangul file older than HWP 5.0 that was left out: said by name)
   const startedAt = location.hash;
-  for (let file of fileList) {
-    // What the file really is (a shared file may come without a type, a name or the right one).
-    let kind = await sniff(file);
-    if (!kind && (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name))) kind = 'pdf'; // (pdf.js reads a little junk before the header)
-    // a document to turn into a PDF: Hangul (HWPX), or a ZIP that is a Word file (by its name or
-    // type; a shared one may have neither)
-    const fmt = kind === 'hwpx' || kind === 'docx' ? zipFormat(kind, file.name, file.type) : kind === 'cfb' ? cfbFormat(file.name) : null;
-    const word = !!fmt && (fmt === 'hwpx' || fmt === 'hwp' || formatOf(file.name) === 'docx' || file.type === DOCX_TYPE || !OTHER_ZIP.test(file.name));
-    if (kind !== 'pdf' && !word) {
-      if (kind === 'hwp3' && !oldHwp) oldHwp = baseName(file.name) || file.name || '';
+  for (const file of fileList) {
+    let doc;
+    try {
+      doc = await prepareDoc(file);
+    } catch (e) {
+      console.warn('convert failed', e);
+      failed.push(baseName(file.name));
+      failMsg = e && e.convert ? e.message : t('convBroken');
       continue;
     }
-    const name = baseName(file.name);
-    if (word) {
-      const say = (p) => toast(t('convertingNamePct', { name, pct: Math.round(p * 100) }), { duration: 10 * 60_000 });
-      let shown = -1;
-      say(0);
-      try {
-        file = await toPdf(file, { name, fmt }, { onProgress: (p) => { if (p - shown >= 0.05) { shown = p; say(p); } } });
-      } catch (e) {
-        console.warn('convert failed', e);
-        failed.push(name);
-        failMsg = e && e.convert ? e.message : t('convBroken');
-        continue;
-      }
+    if (!doc || doc.oldHwp != null) {
+      if (doc && !oldHwp) oldHwp = doc.oldHwp;
+      continue;
     }
-    let modifiedTime = new Date(file.lastModified || Date.now()).toISOString();
-    // The same note again (e.g. a report re-exported after editing): offer to update it in place,
-    // which keeps its reading position, bookmarks and tab.
-    const same = Object.values(localFiles.get()).find((x) => x.name.toLowerCase() === name.toLowerCase());
-    const choice = same ? await askSameName(same.name) : 'keep';
-    if (choice === 'skip') continue; // dismissed: import nothing (not a silent duplicate)
-    const replace = choice === 'replace';
-    const id = replace ? same.id : 'local:' + Math.random().toString(36).slice(2, 10);
-    if (replace && modifiedTime <= same.modifiedTime) modifiedTime = new Date().toISOString(); // still a newer version
-    await cache.putPdf(id, file, modifiedTime);
-    // Re-read right before writing so concurrent imports don't overwrite each other.
-    const all = localFiles.get();
-    all[id] = { id, name: replace ? same.name : name, modifiedTime, size: file.size };
-    if (word) all[id].fmt = fmt; else delete all[id].fmt;
-    localFiles.set(all);
-    if (replace) replaced++;
-    last = id;
+    const stored = await storeDoc(doc);
+    if (!stored) continue;
+    if (stored.replaced) replaced++;
+    last = stored.id;
   }
   if (failed.length) toast(failed.length === 1 && !last ? failMsg : t('convFailedSome', { name: joinList(failed) }), { duration: 6000 });
   if (!last) { if (!failed.length) toast(oldHwp ? t('oldHwp3', { name: oldHwp }) : t('onlyPdf'), oldHwp ? { duration: 6000 } : undefined); return; }
   if (!failed.length) toast(replaced ? t('sameNameUpdated') : t('imported'));
   if (replaced && viewer.isOpen && viewer.meta && viewer.meta.id === last) reloadOpenDoc();
+  else if (!open) return; // (a file opened with Note Viewer comes next, as a preview)
   else if (location.hash !== startedAt) {
     // The user went on elsewhere while a document was being converted: don't pull them away.
     if (!failed.length) toast(t('imported'), { action: t('open'), onAction: () => openFromApp(last) });
@@ -3233,7 +3272,9 @@ function askSameName(name) {
 // ====================================================================== viewer glue
 const viewer = new Viewer($('#viewer'), {
   onBack: () => closeViewer(),
+  onAddPreview: () => addPreview(viewer.meta && viewer.meta.id),
   onMenu: (meta) => {
+    if (meta.preview) return [{ label: t('addToLibrary'), icon: 'plus', onClick: () => addPreview(meta.id) }];
     const st = docState(meta.id);
     const items = [
       { label: st.fav ? t('removeFav') : t('addFav'), icon: st.fav ? 'star' : 'starFill', onClick: () => toggleFav(meta.id) },
@@ -3725,24 +3766,127 @@ async function importShares() {
   let shares = [];
   try { shares = JSON.parse(NATIVE.takeShares()); } catch { return; }
   const files = [];
+  const opened = []; // files opened with Note Viewer ("Open with"): the last readable one is shown
   for (const sh of shares) {
     try {
       const res = await fetch(sh.url);
       if (!res.ok) throw new Error(res.status);
       const blob = await res.blob();
       // (the type the other app gave, if any; importFiles looks at the bytes as well)
-      files.push(new File([blob], sh.name, { type: typeof sh.type === 'string' ? sh.type : '', lastModified: Date.now() }));
+      const file = new File([blob], sh.name, { type: typeof sh.type === 'string' ? sh.type : '', lastModified: Date.now() });
+      if (sh.view === true) opened.push(file); else files.push(file);
     } catch (e) {
       toast(t('shareFailed', { name: sh.name }));
     }
     NATIVE.doneShare(sh.index);
   }
+  // Shared to the app: added now. Opened with Note Viewer: read first, added only if asked.
+  if (opened.length) {
+    if (files.length) await importSharedFiles(files, { open: false });
+    for (let k = opened.length - 1; k >= 0; k--) { // (an unreadable one: the one opened before it)
+      try {
+        if (await openPreview(opened[k], { quiet: k > 0 })) break;
+      } catch (e) {
+        console.error(e);
+        if (k === 0) toast(e && e.convert ? e.message : t('shareFailed', { name: opened[k].name }), { duration: 6000 });
+      }
+    }
+    return;
+  }
   if (!files.length) return;
+  await importSharedFiles(files);
+}
+
+async function importSharedFiles(files, { open = true } = {}) {
   try {
-    await importFiles(files);
+    await importFiles(files, { open });
   } catch (e) {
     console.error(e);
     toast(e && e.name === 'QuotaExceededError' ? t('storageFull') : t('shareFailed', { name: joinList(files.map((f) => f.name)) }));
+  }
+}
+
+// ====================================================================== preview (a file opened from another app)
+
+/** Whether the file could be read (and is shown, or offered when the reader went elsewhere). */
+async function openPreview(file, { quiet = false } = {}) {
+  const startedAt = location.hash;
+  const doc = await prepareDoc(file);
+  if (!doc || doc.oldHwp != null) {
+    if (!quiet) toast(doc ? t('oldHwp3', { name: doc.oldHwp }) : t('onlyPdf'), { duration: 6000 });
+    return false;
+  }
+  const meta = {
+    id: 'preview:' + Math.random().toString(36).slice(2, 10),
+    name: doc.name,
+    modifiedTime: new Date(doc.pdf.lastModified || Date.now()).toISOString(),
+    size: doc.pdf.size,
+    preview: true,
+  };
+  if (doc.fmt) meta.fmt = doc.fmt;
+  const entry = { ...doc, meta };
+  // (set only when shown: leaving for another screen in between clears `preview`)
+  const show = () => {
+    preview = entry;
+    if (parseRoute().preview) showPreview(); // (in place of the file shown before)
+    else if (viewer.isOpen) go('#/preview', { replace: true }); // in place of the open note, like a tab
+    else { openedFromApp = true; go('#/preview'); } // a step from the library: Back returns to it
+  };
+  // A long conversion: the reader went on elsewhere meanwhile; offer it rather than pulling them away.
+  if (doc.fmt && location.hash !== startedAt) {
+    toast(t('previewReady', { name: doc.name }), { action: t('open'), onAction: show, duration: 10000 });
+    return true;
+  }
+  if (doc.fmt) toast(t('previewConverted'), { duration: 3000 });
+  show();
+  return true;
+}
+
+async function showPreview() {
+  const p = preview;
+  if (!p || (viewer.meta && viewer.meta.id === p.meta.id)) return;
+  viewer.prepare(p.meta);
+  try {
+    await viewer.open(p.meta, p.pdf);
+    if (viewer.meta && viewer.meta.id === p.meta.id && viewer.doc) { p.ready = true; viewer.setPreviewReady(true); }
+  } catch (e) {
+    console.error(e);
+    p.failed = true; // (a same-name question still up for it adds nothing)
+    if (preview === p) { preview = null; toast(t('shareFailed', { name: p.name }), { duration: 6000 }); closeViewer(); }
+  }
+}
+
+/** "Add to Note Viewer": the previewed file joins the library and opens there, on the same page. */
+let adding = false;
+async function addPreview(id) {
+  const p = preview;
+  // (only the preview the button or menu belongs to, once it has opened: a stale menu or a file
+  // still loading — or one that can't be read — adds nothing)
+  if (!p || adding || p.meta.id !== id || !p.ready || p.failed) return;
+  adding = true;
+  try {
+    const page = viewer.meta && viewer.meta.id === p.meta.id && viewer.current >= 0 ? viewer.current + 1 : 1;
+    let stored;
+    try {
+      stored = await storeDoc(p, { stillWanted: () => p.ready && !p.failed });
+    } catch (e) {
+      console.error(e);
+      toast(e && e.name === 'QuotaExceededError' ? t('storageFull') : t('shareFailed', { name: p.name }), { duration: 6000 });
+      return;
+    }
+    if (!stored) return; // dismissed (same name)
+    updateDocState(stored.id, { lastPage: page });
+    if (preview !== p) { // another file opened meanwhile: it stays; this one is in the library
+      toast(stored.replaced ? t('sameNameUpdated') : t('addedToLibrary'), { action: t('open'), onAction: () => openFromApp(stored.id) });
+      return;
+    }
+    preview = null;
+    // (keyboard and screen reader users stay in the note: the button they used goes away)
+    if (viewer.root.contains(document.activeElement)) setTimeout(() => { const m = $('.vbar [data-act="menu"]', viewer.root); if (m && viewer.isOpen) m.focus({ preventScroll: true }); }, 800);
+    toast(stored.replaced ? t('sameNameUpdated') : t('addedToLibrary'));
+    go(`#/doc/${encodeURIComponent(stored.id)}`, { replace: true });
+  } finally {
+    adding = false;
   }
 }
 
@@ -3774,7 +3918,7 @@ function renderTabs() {
   document.body.classList.toggle('has-tabs', shown.length > 0);
   tabstrip.hidden = !shown.length;
   if (!shown.length) { tabstrip.innerHTML = ''; return; }
-  const inLibrary = !activeTab;
+  const inLibrary = !activeTab && !parseRoute().preview;
   tabstrip.innerHTML = `
     <button class="tab-home ${inLibrary ? 'on' : ''}" data-tab-home aria-label="${t('home')}">${icon('home')}</button>
     <div class="tabs-scroll" role="tablist">${shown.map(([id, f]) => `

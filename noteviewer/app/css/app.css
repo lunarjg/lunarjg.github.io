@@ -645,6 +645,26 @@ button.glist-row:active, a.glist-row:active, label.glist-row:active { background
 .inkclear .xlabel { color: inherit; }
 .inkclear:disabled { opacity: .45; }
 
+/* a file opened from another app: "Add to Note Viewer" above the page dock */
+.vpreview {
+  position: absolute; z-index: 2; left: 12px; right: 12px; bottom: calc(80px + var(--sab)); /* (under the page bubble) */
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; max-width: 560px; margin: 0 auto; padding: 8px 8px 8px 18px;
+  background: var(--sheet); border-radius: 20px; box-shadow: 0 8px 28px rgba(20, 24, 22, .22), 0 0 0 .5px var(--sep);
+}
+.vpreview[hidden] { display: none; }
+.vpreview-text { flex: 1 1 9em; min-width: 0; font-size: 14px; color: var(--text2); } /* (narrower: the button goes below) */
+.vpreview-add {
+  flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px;
+  border-radius: 999px; background: var(--accent-fill); color: #fff; font-size: 15px; font-weight: 600;
+}
+.vpreview-add .ic { width: 18px; height: 18px; }
+.vpreview-add:disabled { opacity: .55; }
+.viewer.bars-hidden .vpreview { transform: translateY(calc(100% + 110px)); opacity: 0; pointer-events: none; }
+.vpreview { transition: transform .2s ease, opacity .2s; }
+.viewer.previewing .vdock [data-act="ink"] { display: none; }
+body:has(.viewer.previewing:not(.bars-hidden)) #toast { bottom: calc(92px + var(--vpreview-h, 60px) + var(--sab)); } /* (above the bar) */
+.viewer.previewing .vbar [data-act="bookmark"] { display: none; } /* (bookmarks come with adding it) */
+
 /* tap to hide the menu bar and dock */
 .viewer.bars-hidden .vbar {
   position: absolute; left: 0; right: 0; top: 0;
@@ -903,6 +923,8 @@ body.in-viewer #toast { bottom: calc(84px + var(--sab)); }
   .vsearch { height: 46px; }
   .vdock { height: 46px; bottom: calc(8px + var(--sab)); }
   .inkbar { height: 48px; bottom: calc(8px + var(--sab)); }
+  .vpreview { bottom: calc(62px + var(--sab)); padding: 4px 4px 4px 14px; }
+  .vpreview-add { min-height: 40px; }
 }
 
 /* Bottom sheets that scroll (landscape): shadows at the edges show there is more */

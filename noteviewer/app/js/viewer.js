@@ -27,10 +27,16 @@ const PEN_NAMES = { k: 'colorBlack', b: 'colorBlue', r: 'colorRed', g: 'colorGre
 const HL_NAMES = { y: 'colorYellow', g: 'colorGreen', p: 'colorPink', b: 'colorBlue' };
 
 export class Viewer {
-  constructor(root, { onBack, onMenu }) {
+  constructor(root, { onBack, onMenu, onAddPreview }) {
     this.root = root;
     this.onBack = onBack;
     this.onMenu = onMenu;
+    this.onAddPreview = onAddPreview;
+    this.previewBar = $('.vpreview', root);
+    // (its height, for the toast to keep clear of it)
+    if (this.previewBar && window.ResizeObserver) {
+      new ResizeObserver(() => document.documentElement.style.setProperty('--vpreview-h', this.previewBar.offsetHeight + 'px')).observe(this.previewBar);
+    }
     this.scroller = $('.scroller', root);
     this.sizer = $('.sizer', root);
     this.pagesEl = $('.pages', root);
@@ -79,6 +85,17 @@ export class Viewer {
     this.cover(true);
     $('.vtitle-text', this.root).textContent = meta.name;
     this.subtitle.textContent = '';
+    // A file opened from another app, not in the library yet: offer to add it.
+    this.root.classList.toggle('previewing', !!meta.preview);
+    if (this.previewBar) {
+      this.previewBar.hidden = !meta.preview;
+      this.setPreviewReady(false); // (adding waits until the file has opened)
+      const say = $('.vpreview-text', this.previewBar);
+      if (meta.preview && say) { // (said again after the loading messages, so screen readers hear it)
+        say.textContent = '';
+        setTimeout(() => { if (this.meta === meta) say.textContent = t('previewNote'); }, 400);
+      }
+    }
     this.applyPageColor();
     this.updateBookmarkButton();
     this.showLoading(t('loading'));
@@ -117,7 +134,15 @@ export class Viewer {
     this.pages = sizes.map((s, i) => ({ i, ...s, el: null, canvas: null, scale: 0, links: false }));
     this.maxRatio = Math.min(4, Math.max(...sizes.map((s) => s.h / s.w)));
     this.buildPages();
-    this.inkLoading = this.loadInkFor(meta, gen);
+    if (meta.preview) { // (nothing kept for a preview: no writing, nothing to save)
+      this.inkPages = null;
+      this.inkLost = [];
+      this.inkLoading = null;
+      this.inkRev = this.inkSavedRev = 0;
+      this.inkUndo = [];
+      this.inkRedo = [];
+    }
+    else this.inkLoading = this.loadInkFor(meta, gen);
     this.zoom = 1;
     this.layout();
     this.loading.hidden = true;
@@ -132,6 +157,7 @@ export class Viewer {
     this.update();
     this.updateScrub();
     if (quick) this.measurePages(doc, gen, sizeOf);
+    if (meta.preview) return 0; // a file opened from another app: nothing about it is stored
     this.loadChanged(meta);
     this.diffPages(meta, gen);
     // A newer version with more pages than last time: offer to jump to the new ones.
@@ -190,8 +216,16 @@ export class Viewer {
     return added;
   }
 
+  /** The previewed file has opened: it can be added. */
+  setPreviewReady(on) {
+    const b = this.previewBar && $('.vpreview-add', this.previewBar);
+    if (b) b.disabled = !on;
+  }
+
   close() {
     this.setInking(false);
+    this.root.classList.remove('previewing');
+    if (this.previewBar) this.previewBar.hidden = true;
     this.gen++;
     if (this.barsHidden) this.setBarsHidden(false);
     this.closeSearch();
@@ -278,6 +312,7 @@ export class Viewer {
 
   saveState() {
     // Only for the document actually on screen (not while a different note is still loading).
+    if (this.meta && this.meta.preview) return;
     if (this.meta && this.doc && this.docId === this.meta.id && this.current >= 0) {
       updateDocState(this.meta.id, { lastPage: this.current + 1 });
     }
@@ -991,6 +1026,7 @@ export class Viewer {
   }
 
   toggleBookmark() {
+    if (this.meta && this.meta.preview) { toast(t('previewAddFirst')); return; }
     if (!this.meta || this.current < 0) return;
     const n = this.current + 1;
     const bms = new Set(docState(this.meta.id).bookmarks || []);
@@ -1040,7 +1076,7 @@ export class Viewer {
 
   /** The bars, the pages and the page slider under the sheet: out of reach for Tab while it is open. */
   underSheet(on) {
-    for (const el of $$('.vbar, .scroller, .vdock', this.root)) el.inert = on;
+    for (const el of $$('.vbar, .scroller, .vdock, .vpreview', this.root)) el.inert = on;
   }
 
   closeSheet() {
@@ -1068,7 +1104,7 @@ export class Viewer {
     const all = this.pages.map((p) => p.i + 1);
     const nums = tab === 'bookmarks' ? (docState(this.meta.id).bookmarks || []).filter((n) => n <= this.pages.length) : all;
     if (!nums.length) {
-      body.innerHTML = `<div class="empty small"><span data-icon="bookmark"></span><b>${t('noBookmarksTitle')}</b><p>${t('noBookmarksText')}</p></div>`;
+      body.innerHTML = `<div class="empty small"><span data-icon="bookmark"></span><b>${t('noBookmarksTitle')}</b><p>${t(this.meta && this.meta.preview ? 'previewAddFirst' : 'noBookmarksText')}</p></div>`;
       hydrateIcons(body);
       return;
     }
@@ -1490,7 +1526,7 @@ export class Viewer {
         console.warn('auto contents', e);
         return []; // shown as "none found", not remembered: a passing failure tries again
       }
-      if (items) idb.put('texts', key, { version, items }).catch(() => {});
+      if (items && !meta.preview) idb.put('texts', key, { version, items }).catch(() => {});
       return items;
     })().then((items) => {
       if (this.autoTocJob === job) this.autoTocJob = null;
@@ -1598,13 +1634,14 @@ export class Viewer {
       return;
     }
     const n = this.pages.length;
-    const done = doneCount(this.ocr);
+    const done = this.meta && this.meta.preview ? n : doneCount(this.ocr); // (a preview's handwriting isn't read)
     let status = '';
     if (ocrOn() && done < n && this.ocrError) status = `<div class="sr-ocr" role="status">${esc(t('ocrFailed'))}</div>`;
     else if (ocrOn() && done < n) status = `<div class="sr-ocr" role="status"><div class="spinner sm"></div>${esc(this.ocrWaiting ? t('ocrPreparing') : t('ocrProgress', { i: done, n }))}</div>`;
     else if (!ocrOn() && ocrSupported()) status = `<button class="sr-ocr on" data-act="ocr-enable">${icon('pen')}<span>${esc(t('ocrEnable'))}</span></button>`;
+    if (this.meta && this.meta.preview) status = ocrSupported() ? `<div class="sr-ocr">${esc(t('previewOcrLater'))}</div>` : '';
     if (!hits.length) {
-      this.searchResults.innerHTML = `<div class="sr-empty">${t('noResults', { q: esc(q) })}${ocrOn() ? '' : `<small>${t('handwritingNote')}</small>`}</div>${status}`;
+      this.searchResults.innerHTML = `<div class="sr-empty">${t('noResults', { q: esc(q) })}${ocrOn() || (this.meta && this.meta.preview) ? '' : `<small>${t('handwritingNote')}</small>`}</div>${status}`;
       return;
     }
     const line = (s) => esc(s.replace(/\s+/g, ' '));
@@ -1618,6 +1655,7 @@ export class Viewer {
 
   /** Recognize the pages not read yet, refreshing the results as pages come in. */
   startOcr() {
+    if (this.meta && this.meta.preview) return; // (read once it is in the library)
     if (this.ocrRunning || !this.doc || !this.meta || doneCount(this.ocr) >= this.pages.length) return;
     if (this.restricted()) return; // (its text isn't read out, by hand or otherwise)
     const gen = this.gen;
@@ -1816,6 +1854,7 @@ export class Viewer {
       else if (act === 'search-prev') this.gotoHit(this.hitIndex - 1);
       else if (act === 'ocr-enable') this.enableOcr();
       else if (act === 'ink') this.setInking(true);
+      else if (act === 'preview-add') { if (this.onAddPreview) this.onAddPreview(); }
       else if (act === 'ink-done') this.setInking(false);
       else if (act === 'ink-undo') this.inkStep(true);
       else if (act === 'ink-redo') this.inkStep(false);
@@ -1856,13 +1895,15 @@ export class Viewer {
   openMenu() {
     if (!this.meta) return;
     const extra = this.onMenu ? this.onMenu(this.meta) : [];
+    const pv = !!this.meta.preview;
     actionSheet({
       title: this.meta.name,
       subtitle: joinList([this.pages.length ? t('menuSubtitle', { n: this.pages.length, cur: this.current + 1 }) : '', this.restricted() && t('restrictedInfo')]),
       items: [
+        ...(pv ? extra : []), // (a preview: "Add to Note Viewer" first)
         { label: t('goToPageMenu'), icon: 'page', onClick: () => this.askPage() },
         { label: t('showPageList'), icon: 'grid', onClick: () => this.openSheet('thumbs') },
-        { label: t('inkMode'), icon: 'pen', onClick: () => this.setInking(true) },
+        ...(pv ? [] : [{ label: t('inkMode'), icon: 'pen', onClick: () => this.setInking(true) }]),
         this.single
           ? { label: t('scrollView'), icon: 'docs', onClick: () => this.setMode('scroll') }
           : { label: t('singlePageView'), icon: 'page', onClick: () => this.setMode('single') },
@@ -1883,7 +1924,7 @@ export class Viewer {
           ? [{ label: t('changedMenu', { n: this.changed.size }), icon: 'page', onClick: () => this.listChanged() }]
           : []),
         { label: t('resetZoom'), icon: 'zoomFit', disabled: this.zoom === 1, onClick: () => this.resetZoom() },
-        ...extra,
+        ...(pv ? [] : extra),
         { label: t('savePdf'), icon: 'download', disabled: !this.blob, onClick: () => this.savePdf() },
         { label: t('info'), icon: 'info', onClick: () => this.showInfo() },
       ],
@@ -1978,6 +2019,7 @@ export class Viewer {
   }
 
   setInking(on) {
+    if (on && this.meta && this.meta.preview) { toast(t('previewAddFirst')); return; }
     on = !!on && !!this.doc;
     if (on === !!this.inking) return;
     this.cancelStroke();
@@ -2167,6 +2209,7 @@ export class Viewer {
   flushInk({ now = false } = {}) {
     clearTimeout(this.inkTimer);
     this.inkTimer = 0;
+    if (this.meta && this.meta.preview) return this.inkSaving || Promise.resolve(true);
     const id = this.meta && this.meta.id;
     if (!id || !this.inkPages) return this.inkSaving || Promise.resolve();
     const snap = () => {
@@ -2178,14 +2221,16 @@ export class Viewer {
     // copy at once whenever this note's writing changed since it was opened.
     const lost = (this.inkLost || []).slice();
     const gen = this.inkGen;
-    if (now && this.inkRev > 0) journalInk(id, snap(), lost, nextToken(), gen);
+    // (nothing changed since the last finished save, and none under way: nothing to keep)
+    if (now && this.inkRev > 0 && (this.inkRev !== this.inkSavedRev || this.inkInFlight > 0)) journalInk(id, snap(), lost, nextToken(), gen);
     if (this.inkRev === this.inkSavedRev) return this.inkSaving || Promise.resolve(true);
     const snapshot = snap();
     const token = nextToken();
     this.inkSavedRev = this.inkRev;
     const prev = this.inkSaving || Promise.resolve();
     // Resolves to whether it was saved (not after "delete all writing", not on a failure).
-    this.inkSaving = prev.catch(() => {}).then(() => saveInk(id, snapshot, lost, token, gen)).catch((err) => {
+    this.inkInFlight = (this.inkInFlight || 0) + 1;
+    this.inkSaving = prev.catch(() => {}).then(() => saveInk(id, snapshot, lost, token, gen)).finally(() => { this.inkInFlight--; }).catch((err) => {
       console.warn('ink save failed', err);
       this.inkSavedRev = -1; // tried again with the next change or when leaving the note
       toast(t('inkSaveFailed'), { duration: 6000 });

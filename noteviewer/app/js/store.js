@@ -123,7 +123,8 @@ export const cloudLibrary = {
 /** Files imported from the phone itself. {id:{id,name,modifiedTime,size}} */
 export const localFiles = {
   get() { return readJSON('local', {}); },
-  set(v) { writeJSON('local', v); },
+  /** Returns whether it was stored (a full storage refuses it). */
+  set(v) { return writeJSON('local', v); },
 };
 
 /** Per-document reading state: {id:{lastPage, lastOpened, seenModified, bookmarks:[], fav}} */

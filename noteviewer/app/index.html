@@ -74,6 +74,11 @@
           <span class="scrub-bubble"></span>
           <button class="ibtn" data-act="ink" data-i18n-aria="inkMode"><span data-icon="pen"></span></button>
         </div>
+        <!-- a file opened from another app: read first, added to the library only on request -->
+        <div class="vpreview" hidden>
+          <span class="vpreview-text" role="status" data-i18n="previewNote"></span>
+          <button class="vpreview-add" data-act="preview-add"><span data-icon="plus"></span><b data-i18n="addToLibrary"></b></button>
+        </div>
         <!-- handwriting: kept on this device, drawn over the pages -->
         <div class="inkbar" role="toolbar" data-i18n-aria="inkTools" hidden>
           <button class="ibtn" data-ink="pen" data-i18n-aria="inkPen"><span data-icon="pen"></span></button>
